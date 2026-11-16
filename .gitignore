@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 .venv/
 venv/
 __pycache__/
@@ -26,5 +26,9 @@ android/build/
 .env
 .env.*
 !.env.example
+photos/
+reports/
+backups/
+exports/
 .DS_Store
 Thumbs.db
