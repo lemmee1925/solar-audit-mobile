@@ -496,12 +496,27 @@ def _ensure_checklist_versioning_columns():
     _ensure_columns('observations', {
         "finding_type": "VARCHAR(10) NOT NULL DEFAULT 'NC'",
     })
-    # PostgreSQL schema changes are managed only by explicit Alembic migrations.
-    # Pre-existing questions have NULL is_active after ALTER on some SQLite
-    # builds; treat them as active.
+    _ensure_columns('users', {
+        'organization_id': 'VARCHAR(36)',
+    })
+    _ensure_columns('sites', {
+        'organization_id': 'VARCHAR(36)',
+    })
+    # Ensure any remaining model columns (such as plant specification fields)
+    # are present on older SQLite databases without destructive recreation.
     if DATABASE_URL.startswith('sqlite'):
-        from sqlalchemy import text
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        existing_tables = set(inspector.get_table_names())
         with engine.begin() as conn:
+            for table_name, table_obj in Base.metadata.tables.items():
+                if table_name not in existing_tables:
+                    continue
+                existing_cols = {c['name'] for c in inspector.get_columns(table_name)}
+                for col in table_obj.columns:
+                    if col.name not in existing_cols:
+                        col_type = col.type.compile(dialect=engine.dialect)
+                        conn.execute(text(f'ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}'))
             conn.execute(text("UPDATE audit_questions SET is_active = 1 WHERE is_active IS NULL"))
 
 

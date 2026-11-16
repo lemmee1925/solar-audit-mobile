@@ -22,12 +22,14 @@ def test_unauthorized_access(mock_current_site, client):
     assert response.status_code == 200
     assert b'Please log in first' in response.data or b'login' in response.data.lower()
 
+@patch('app.load_site_config')
 @patch('app.current_site')
 @patch('app.Session')
-def test_valid_login(mock_session, mock_current_site, client):
+def test_valid_login(mock_session, mock_current_site, mock_load_site_config, client):
     mock_site = MagicMock()
     mock_site.site_id = "TEST_SITE"
     mock_current_site.return_value = mock_site
+    mock_load_site_config.return_value = mock_site
     
     mock_user = User(id='1', username='admin', password_hash='mock_hash', role='admin', site_id='TEST_SITE')
     mock_db_session = MagicMock()

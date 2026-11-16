@@ -32,7 +32,7 @@
   function checkPending(){
     if(!navigator.onLine) return;
     try {
-      var r=indexedDB.open('solar_audit',3);
+      var r=indexedDB.open('solar_audit');
       r.onsuccess=function(e){
         var db=e.target.result;
         if(!db.objectStoreNames.contains('audits')) return;

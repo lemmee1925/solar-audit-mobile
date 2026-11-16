@@ -93,10 +93,13 @@ def add_mobile_api_cors_headers(response):
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Vary'] = 'Origin'
             response.headers['Access-Control-Allow-Methods'] = (
-                'GET, POST, OPTIONS'
+                'GET, POST, PUT, PATCH, DELETE, OPTIONS'
             )
             response.headers['Access-Control-Allow-Headers'] = (
-                'Authorization, Content-Type'
+                'Authorization, Content-Type, If-None-Match'
+            )
+            response.headers['Access-Control-Expose-Headers'] = (
+                'ETag'
             )
             response.headers['Access-Control-Max-Age'] = '600'
 
@@ -2930,6 +2933,9 @@ def _observation_rows(session, audit_id=None):
     q = _plant_scope(q, session)
     rows = []
     for obs, audit, plant, resp, question, asset in q.all():
+        effective_type = 'OFI' if resp and (resp.response_status or '').lower() == 'ofi' else (obs.finding_type or 'NC').upper()
+        if obs.finding_type != effective_type:
+            obs.finding_type = effective_type
         rows.append({
             'obs': obs, 'audit': audit, 'plant': plant, 'question': question, 'asset': asset,
             'equipment': asset.asset_name if asset else 'Safety',
@@ -2967,7 +2973,13 @@ def observations_list():
         rows = _observation_rows(session)
         f_status = request.args.get('status', '')
         f_sev = request.args.get('severity', '')
-        counts = {'all': len(rows), 'overdue': sum(1 for r in rows if r['overdue'])}
+        f_type = request.args.get('finding_type', '').upper()
+        counts = {
+            'all': len(rows),
+            'overdue': sum(1 for r in rows if r['overdue']),
+            'NC': sum(1 for r in rows if (r['obs'].finding_type or 'NC').upper() == 'NC'),
+            'OFI': sum(1 for r in rows if (r['obs'].finding_type or 'NC').upper() == 'OFI'),
+        }
         for st in STATUS_LABELS:
             counts[st] = sum(1 for r in rows if r['obs'].status == st)
         if f_status == 'overdue':
@@ -2978,8 +2990,10 @@ def observations_list():
             rows = [r for r in rows if r['obs'].status == f_status]
         if f_sev in SEVERITY_LABELS:
             rows = [r for r in rows if r['obs'].severity == f_sev]
+        if f_type in ('NC', 'OFI'):
+            rows = [r for r in rows if (r['obs'].finding_type or 'NC').upper() == f_type]
         return render_template('observations.html', rows=rows, counts=counts,
-                               f_status=f_status, f_sev=f_sev)
+                               f_status=f_status, f_sev=f_sev, f_type=f_type)
     finally:
         session.close()
 
@@ -3133,9 +3147,6 @@ def observation_details_update(obs_id):
         if not can_access_plant(session, current_user, audit.plant_id):
             flash('You do not have access to this plant.', 'error')
             return redirect(url_for('observations_list'))
-        if audit.status != 'submitted':
-            flash('Submit the audit before editing finding details in Observations.', 'error')
-            return redirect(url_for('observation_detail', obs_id=obs_id))
         if obs.status in ('closed', 'withdrawn'):
             flash('This observation is closed. Reopen it before changing finding details.', 'error')
             return redirect(url_for('observation_detail', obs_id=obs_id))
@@ -3452,6 +3463,8 @@ def settings_backup():
     and site config — enough to fully restore this install. Never
     overwrites an existing backup file (timestamped name).
     """
+    if CENTRAL_MODE:
+        abort(403)
     site = current_site()
     timestamp = datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')
     backup_name = f'solarudit_backup_{site.site_id}_{timestamp}.zip'
@@ -3492,6 +3505,8 @@ def settings_backup():
 @login_required
 @admin_required
 def settings_backup_download(filename):
+    if CENTRAL_MODE:
+        abort(403)
     filename = os.path.basename(filename)  # no path traversal
     path = os.path.join(str(backups_dir()), filename)
     if not filename.endswith('.zip') or not os.path.exists(path):
@@ -3509,6 +3524,8 @@ def settings_restore():
     backup of current data first, then replace. Refuses (does not silently
     override) a backup whose site_id doesn't match this install.
     """
+    if CENTRAL_MODE:
+        abort(403)
     file = request.files.get('backup_file')
     if not file or not file.filename:
         flash('Please choose a backup ZIP file to restore.', 'error')
@@ -3609,6 +3626,11 @@ def reports():
 
 
 if __name__ == '__main__':
+    os.environ.setdefault('MOBILE_API_ENABLED', '1')
+    os.environ.setdefault(
+        'MOBILE_API_SIGNING_SECRET',
+        os.environ.get('SECRET_KEY') or 'solar-audit-mobile-api-signing-secret-v1-local-dev-key-2026',
+    )
     port = int(os.environ.get('PORT', 5000))
     try:
         from waitress import serve

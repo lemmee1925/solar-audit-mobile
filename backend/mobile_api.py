@@ -633,6 +633,15 @@ def _mobile_observation_context(db, observation_id):
     return obs, audit, user
 
 
+def _iso_utc(dt):
+    if not dt:
+        return None
+    s = dt.isoformat()
+    if dt.tzinfo is None and not s.endswith('Z'):
+        return s + 'Z'
+    return s
+
+
 def _observation_json(db, obs, audit):
     response = db.query(AuditResponse).filter_by(id=obs.audit_response_id, audit_id=audit.id).first()
     question = db.query(AuditQuestion).filter_by(id=response.question_id).first() if response else None
@@ -670,22 +679,22 @@ def _observation_json(db, obs, audit):
         'review_status': obs.review_status or 'pending', 'status': obs.status,
         'status_label': display_status(obs), 'overdue': is_overdue(obs),
         'age_days': age_days(obs),
-        'created_at': obs.created_at.isoformat() if obs.created_at else None,
-        'updated_at': obs.updated_at.isoformat() if obs.updated_at else None,
+        'created_at': _iso_utc(obs.created_at),
+        'updated_at': _iso_utc(obs.updated_at),
         'reviewed_by': obs.reviewed_by or '',
-        'reviewed_at': obs.reviewed_at.isoformat() if obs.reviewed_at else None,
-        'closed_at': obs.closed_at.isoformat() if obs.closed_at else None,
+        'reviewed_at': _iso_utc(obs.reviewed_at),
+        'closed_at': _iso_utc(obs.closed_at),
         'closure_photos': [{
             'id': str(p.id), 'kind': p.kind,
-            'captured_at': p.captured_at.isoformat() if p.captured_at else None,
-            'uploaded_at': p.uploaded_at.isoformat() if p.uploaded_at else None,
+            'captured_at': _iso_utc(p.captured_at),
+            'uploaded_at': _iso_utc(p.uploaded_at),
         } for p in closure_photos],
         'finding_photo_count': len(finding_photos),
         'history': [{
             'id': str(e.id), 'event_type': e.event_type,
             'from_status': e.from_status, 'to_status': e.to_status,
             'comment': e.comment or '', 'actor': e.actor or '',
-            'created_at': e.created_at.isoformat() if e.created_at else None,
+            'created_at': _iso_utc(e.created_at),
         } for e in events],
     }
 
@@ -724,8 +733,6 @@ def observation_details(observation_id):
     obs, audit, user = _mobile_observation_context(db, observation_id)
     if not obs:
         return _error('Observation not found or plant access denied.', 404)
-    if audit.status != 'submitted':
-        return _error('Submit the audit before editing finding details in Observations.', 409)
     if obs.status in ('closed', 'withdrawn'):
         return _error('This observation is closed. Reopen it before changing finding details.', 409)
     payload = request.get_json(silent=True) or {}

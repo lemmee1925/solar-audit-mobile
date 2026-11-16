@@ -60,3 +60,18 @@ def test_observation_list_requires_bearer_token(monkeypatch):
 
     assert response.status_code == 401
     assert response.get_json()["ok"] is False
+
+
+def test_mobile_api_cors_allows_put_patch_delete_and_if_none_match():
+    response = app.test_client().options(
+        "/api/mobile/v1/plants/test-plant/specs",
+        headers={"Origin": "http://localhost"},
+    )
+
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost"
+    allow_methods = response.headers.get("Access-Control-Allow-Methods", "")
+    for method in ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"):
+        assert method in allow_methods
+    allow_headers = response.headers.get("Access-Control-Allow-Headers", "")
+    assert "If-None-Match" in allow_headers
+    assert "ETag" in response.headers.get("Access-Control-Expose-Headers", "")

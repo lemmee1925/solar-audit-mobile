@@ -68,10 +68,8 @@ textarea, input[type=text], input[type=date] { width: 100%; padding: 10px; borde
 
 <div class="card" style="margin-top:16px;">
   <div class="card-title" style="margin-bottom:6px;">Finding details</div>
-  <div class="hint" style="margin-bottom:12px;">Complete the finding details here after the audit is submitted. Changes are recorded in History and reflected in the next report download.</div>
-  {% if audit.status != 'submitted' %}
-  <div class="hint">Submit the audit first. After submission, this section becomes editable without unlocking the audit checkpoints.</div>
-  {% elif s not in ['closed', 'withdrawn'] %}
+  <div class="hint" style="margin-bottom:12px;">Complete or update the finding details here. Changes are recorded in History and reflected in the mobile app and next report download.</div>
+  {% if s not in ['closed', 'withdrawn'] %}
   <form data-no-sticky method="post" action="{{ url_for('observation_details_update', obs_id=obs.id) }}">
     <div class="od-grid">
       <div class="form-group"><label for="finding_severity">Severity</label>

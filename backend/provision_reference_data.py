@@ -19,7 +19,7 @@ from sqlalchemy import inspect, text
 from models import engine
 from seed import ensure_seeded, ensure_safety_checklist, ensure_civil_checklist
 
-EXPECTED_MIGRATION = "20261104_finding_type"
+EXPECTED_MIGRATION = "20261105_hq_org"
 REQUIRED_TABLES = {
     "organizations", "sites", "users", "asset_types",
     "audit_sections", "audit_questions", "observations", "alembic_version",

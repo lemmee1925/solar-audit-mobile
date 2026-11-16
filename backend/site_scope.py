@@ -201,7 +201,7 @@ def compute_score(rows, cfg=None):
     cfg = cfg or load_scoring_config()
     sw = cfg["severity_weights"]
     default_sev = cfg.get("unclassified_severity", "major")
-    complied = not_complied = na = 0
+    complied = not_complied = na = ofi = 0
     w_ok = w_nc = 0.0
     by_sev = {s: 0 for s in SEVERITIES}
     unclassified = 0
@@ -218,6 +218,9 @@ def compute_score(rows, cfg=None):
                 sev = default_sev
             by_sev[sev] = by_sev.get(sev, 0) + 1
             w_nc += float(sw.get(sev, 1.0))
+        elif st == "ofi":
+            ofi += 1
+            na += 1
         else:
             na += 1
     applicable = complied + not_complied
@@ -225,7 +228,7 @@ def compute_score(rows, cfg=None):
     denom = w_ok + w_nc
     score = round(w_ok * 100.0 / denom, 1) if denom else 0.0
     return {
-        "complied": complied, "not_complied": not_complied, "not_applicable": na,
+        "complied": complied, "not_complied": not_complied, "not_applicable": na, "ofi": ofi,
         "applicable": applicable, "compliance_pct": compliance, "score_pct": score,
         "rating": site_rating_for(score, cfg) if applicable else "Not Rated",
         "not_complied_by_severity": by_sev, "unclassified_not_complied": unclassified,
@@ -294,6 +297,7 @@ def age_days(obs, now=None):
 
 
 def obs_log(session, obs, event_type, actor, comment=None, from_status=None, to_status=None):
+    obs.updated_at = datetime.utcnow()
     session.add(ObservationEvent(observation_id=obs.id, event_type=event_type,
                                  from_status=from_status, to_status=to_status,
                                  comment=comment, actor=actor))
@@ -346,7 +350,13 @@ def sync_observation(session, audit, response, site_id, actor, fields):
     obs.finding_type = 'OFI' if status == 'ofi' else 'NC'
 
     if fields.get('observation') is not None:
-        obs.observation = _clean(fields['observation'])
+        incoming_obs = _clean(fields['observation'])
+        placeholders = {'opportunity for improvement recorded', 'non-compliance recorded'}
+        if incoming_obs is not None:
+            if not obs.observation or incoming_obs.lower() not in placeholders:
+                obs.observation = incoming_obs
+        elif not obs.observation:
+            obs.observation = None
     sev = (fields.get('severity') or '').lower()
     if sev in SEVERITY_LABELS:
         obs.severity = sev

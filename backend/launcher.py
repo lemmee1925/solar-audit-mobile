@@ -71,6 +71,12 @@ def main():
     port = _pick_port()
     _lock_file_path().write_text(str(port))
 
+    os.environ.setdefault('MOBILE_API_ENABLED', '1')
+    os.environ.setdefault(
+        'MOBILE_API_SIGNING_SECRET',
+        os.environ.get('SECRET_KEY') or 'solar-audit-mobile-api-signing-secret-v1-local-dev-key-2026',
+    )
+
     # Import app AFTER path/env setup above so paths.py's frozen-mode
     # detection (sys.frozen) is already meaningful.
     from app import app
