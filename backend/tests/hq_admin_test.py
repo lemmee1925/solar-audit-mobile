@@ -94,6 +94,16 @@ def main():
         r = site_client.get('/plants')
         check('Site admin stays on Site A', r.status_code == 200 and b'Plant A' in r.data and b'Plant B' not in r.data)
 
+        # HQ can add, deactivate, and restore a site; site_admin gets 403
+        r = site_client.post('/hq/sites/add', data={'site_id': 'HQ003', 'site_name': 'Blocked'})
+        check('Site admin cannot add sites via HQ', r.status_code == 403)
+        r = hq_client.post('/hq/sites/add', data={'site_id': 'HQ003', 'site_name': 'HQ Site C'}, follow_redirects=True)
+        check('HQ can add a new site', r.status_code == 200 and b'HQ Site C' in r.data)
+        r = hq_client.post('/hq/sites/HQ003/deactivate', follow_redirects=True)
+        check('HQ can deactivate a site', r.status_code == 200 and b'Deactivated' in r.data)
+        r = hq_client.post('/hq/sites/HQ003/reactivate', follow_redirects=True)
+        check('HQ can restore a deactivated site', r.status_code == 200 and b'restored' in r.data)
+
         print('\nHQ ADMIN ROLE TEST PASSED')
     finally:
         shutil.rmtree(DATA_DIR, ignore_errors=True)

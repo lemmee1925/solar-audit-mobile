@@ -5,27 +5,79 @@
   <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
     <div>
       <h1 style="margin:0;">HQ Administration</h1>
-      <p style="margin:.4rem 0 0; color:var(--muted, #64748b);">Select an authorized site to administer its audits, users, plants, and reports.</p>
+      <p style="margin:.4rem 0 0; color:var(--muted, #64748b);">Manage sites in your organization and open any site to administer its audits, users, plants, and reports.</p>
     </div>
     <a class="btn btn-secondary" href="{{ url_for('logout') }}">Log out</a>
   </div>
+
+  <div class="card" style="padding:1.25rem; margin-bottom:1.5rem;">
+    <h2 style="margin-top:0;">Add new site</h2>
+    <form method="post" action="{{ url_for('hq_add_site') }}">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.85rem; margin-bottom:1rem;">
+        <div>
+          <label for="hq_site_id" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site ID *</label>
+          <input id="hq_site_id" name="site_id" type="text" placeholder="e.g. GJ001" required style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+        <div>
+          <label for="hq_site_name" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site Name *</label>
+          <input id="hq_site_name" name="site_name" type="text" placeholder="e.g. Gujarat Solar Park" required style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+        <div>
+          <label for="hq_admin_user" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site Admin Username (optional)</label>
+          <input id="hq_admin_user" name="admin_username" type="text" placeholder="e.g. gj_admin" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+        <div>
+          <label for="hq_admin_name" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site Admin Full Name</label>
+          <input id="hq_admin_name" name="admin_full_name" type="text" placeholder="e.g. Gujarat Admin" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+        <div>
+          <label for="hq_admin_pass" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site Admin Password</label>
+          <input id="hq_admin_pass" name="admin_password" type="password" minlength="6" placeholder="Min 6 characters" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">Add site</button>
+    </form>
+  </div>
+
   {% if sites %}
-    <div class="card" style="padding:1.25rem;">
-      <h2 style="margin-top:0;">Authorized sites</h2>
+    <div class="card" style="padding:1.25rem; margin-bottom:1.5rem;">
+      <h2 style="margin-top:0;">Active sites ({{ sites|length }})</h2>
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem;">
         {% for site in sites %}
           <div style="border:1px solid var(--border, #dbe2ea); border-radius:12px; padding:1rem;">
             <h3 style="margin:.1rem 0 .4rem;">{{ site.site_name }}</h3>
             <p style="margin:0 0 1rem; color:var(--muted, #64748b);">Site ID: {{ site.site_id }}</p>
-            <form method="post" action="{{ url_for('switch_site', site_id=site.site_id) }}">
-              <button class="btn btn-primary" type="submit">Open site</button>
-            </form>
+            <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+              <form method="post" action="{{ url_for('switch_site', site_id=site.site_id) }}">
+                <button class="btn btn-primary" type="submit">Open site</button>
+              </form>
+              <form method="post" action="{{ url_for('hq_deactivate_site', site_id=site.site_id) }}" onsubmit="return confirm('Deactivate site {{ site.site_name }} ({{ site.site_id }})? Existing audit records are preserved and you can restore the site later.');">
+                <button class="btn btn-secondary" type="submit" style="color:#b91c1c;">Remove / Deactivate</button>
+              </form>
+            </div>
           </div>
         {% endfor %}
       </div>
     </div>
   {% else %}
-    <div class="card" style="padding:1.25rem;">No active sites are assigned to your organization. Contact the system administrator.</div>
+    <div class="card" style="padding:1.25rem; margin-bottom:1.5rem;">No active sites are assigned to your organization yet. Use "Add new site" above to create one.</div>
+  {% endif %}
+
+  {% if inactive_sites %}
+    <div class="card" style="padding:1.25rem;">
+      <h2 style="margin-top:0;">Deactivated sites ({{ inactive_sites|length }})</h2>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem;">
+        {% for site in inactive_sites %}
+          <div style="border:1px dashed var(--border, #cbd5e1); border-radius:12px; padding:1rem; opacity:.85;">
+            <h3 style="margin:.1rem 0 .4rem;">{{ site.site_name }}</h3>
+            <p style="margin:0 0 1rem; color:var(--muted, #64748b);">Site ID: {{ site.site_id }} (Deactivated)</p>
+            <form method="post" action="{{ url_for('hq_reactivate_site', site_id=site.site_id) }}" onsubmit="return confirm('Restore site {{ site.site_name }} ({{ site.site_id }})?');">
+              <button class="btn btn-secondary" type="submit">Restore site</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
   {% endif %}
 </div>
 {% endblock %}

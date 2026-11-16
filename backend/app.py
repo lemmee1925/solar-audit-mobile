@@ -147,7 +147,11 @@ def current_site():
         db.close()
 
 
-SETUP_EXEMPT_ENDPOINTS = {'setup', 'static', 'uploaded_file', 'login', 'hq_dashboard', 'switch_site', 'logout'}
+SETUP_EXEMPT_ENDPOINTS = {
+    'setup', 'static', 'uploaded_file', 'login', 'hq_dashboard',
+    'hq_add_site', 'hq_deactivate_site', 'hq_reactivate_site', 'hq_return',
+    'switch_site', 'logout',
+}
 _backfilled_sites = set()
 
 
@@ -1154,9 +1158,124 @@ def hq_dashboard():
     if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
     db = Session()
     try:
-        return render_template('hq_dashboard.html', sites=list_accessible_sites(db, current_user))
+        from models import Site
+        active_sites = list_accessible_sites(db, current_user)
+        org_id = getattr(current_user, 'organization_id', None)
+        inactive_q = db.query(Site).filter(Site.is_active == False)
+        if org_id:
+            inactive_q = inactive_q.filter(Site.organization_id == org_id)
+        inactive_sites = inactive_q.order_by(Site.site_name).all()
+        resp = app.make_response(
+            render_template('hq_dashboard.html', sites=active_sites, inactive_sites=inactive_sites)
+        )
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        return resp
     except CentralAccessError:
         abort(403)
+    finally:
+        db.close()
+
+
+@app.route('/hq/sites/add', methods=['POST'])
+@login_required
+def hq_add_site():
+    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    site_id = (request.form.get('site_id') or '').strip().upper()
+    site_name = (request.form.get('site_name') or '').strip()
+    admin_username = (request.form.get('admin_username') or '').strip()
+    admin_full_name = (request.form.get('admin_full_name') or '').strip()
+    admin_password = request.form.get('admin_password') or ''
+
+    if not is_valid_site_id(site_id) or not site_name:
+        flash('Valid Site ID (letters/numbers/underscore/hyphen) and Site Name are required.', 'error')
+        return redirect(url_for('hq_dashboard'))
+    if admin_username and (not admin_full_name or len(admin_password) < 6):
+        flash('When creating a site admin, full name and a password of at least 6 characters are required.', 'error')
+        return redirect(url_for('hq_dashboard'))
+
+    db = Session()
+    try:
+        from models import Site, Organization
+        org_id = getattr(current_user, 'organization_id', None)
+        if not org_id:
+            first_org = db.query(Organization).filter_by(is_active=True).order_by(Organization.created_at).first()
+            org_id = first_org.id if first_org else None
+        existing = db.query(Site).filter_by(site_id=site_id).first()
+        if existing:
+            flash(f'Site ID "{site_id}" already exists.', 'error')
+            return redirect(url_for('hq_dashboard'))
+        new_site = Site(site_id=site_id, site_name=site_name, organization_id=org_id, is_active=True)
+        db.add(new_site)
+        if admin_username:
+            if db.query(User).filter_by(username=admin_username).first():
+                db.rollback()
+                flash(f'Username "{admin_username}" already exists.', 'error')
+                return redirect(url_for('hq_dashboard'))
+            db.add(User(
+                username=admin_username,
+                full_name=admin_full_name,
+                password_hash=generate_password_hash(admin_password),
+                role='site_admin',
+                is_active=True,
+                site_id=site_id,
+                organization_id=org_id,
+            ))
+        db.commit()
+        flash(f'Site "{site_name}" ({site_id}) added.', 'success')
+        return redirect(url_for('hq_dashboard'))
+    except Exception:
+        db.rollback()
+        app.logger.exception('HQ add site failed')
+        flash('Could not add site. Please retry.', 'error')
+        return redirect(url_for('hq_dashboard'))
+    finally:
+        db.close()
+
+
+@app.route('/hq/sites/<site_id>/deactivate', methods=['POST'])
+@login_required
+def hq_deactivate_site(site_id):
+    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    db = Session()
+    try:
+        from models import Site
+        org_id = getattr(current_user, 'organization_id', None)
+        q = db.query(Site).filter_by(site_id=site_id)
+        if org_id:
+            q = q.filter(Site.organization_id == org_id)
+        site = q.first()
+        if not site:
+            flash('Site not found in your organization.', 'error')
+            return redirect(url_for('hq_dashboard'))
+        site.is_active = False
+        if flask_session.get('active_site_id') == site.site_id:
+            flask_session.pop('active_site_id', None)
+        db.commit()
+        flash(f'Site "{site.site_name}" ({site.site_id}) deactivated. Historical audit data has been preserved.', 'success')
+        return redirect(url_for('hq_dashboard'))
+    finally:
+        db.close()
+
+
+@app.route('/hq/sites/<site_id>/reactivate', methods=['POST'])
+@login_required
+def hq_reactivate_site(site_id):
+    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    db = Session()
+    try:
+        from models import Site
+        org_id = getattr(current_user, 'organization_id', None)
+        q = db.query(Site).filter_by(site_id=site_id)
+        if org_id:
+            q = q.filter(Site.organization_id == org_id)
+        site = q.first()
+        if not site:
+            flash('Site not found in your organization.', 'error')
+            return redirect(url_for('hq_dashboard'))
+        site.is_active = True
+        db.commit()
+        flash(f'Site "{site.site_name}" ({site.site_id}) restored.', 'success')
+        return redirect(url_for('hq_dashboard'))
     finally:
         db.close()
 

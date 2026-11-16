@@ -22,7 +22,7 @@ from typing import Optional
 
 from paths import site_config_path
 
-SITE_ID_PATTERN = re.compile(r'^[A-Z0-9]{2,20}$')
+SITE_ID_PATTERN = re.compile(r'^[A-Z0-9_-]{2,20}$')
 
 
 @dataclass
