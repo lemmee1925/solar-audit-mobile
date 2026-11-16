@@ -108,7 +108,10 @@ def add_mobile_api_cors_headers(response):
 app.secret_key = os.environ.get('SECRET_KEY') or 'solar-audit-local-secret-change-if-multi-user-network-shared'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '').strip().lower() in {'1', 'true', 'yes', 'on'}
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
 UPLOAD_FOLDER = str(photos_dir())
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -456,6 +459,19 @@ def _store_photo(file, rel_dir, prefix, form, gps_suffix):
         os.makedirs(folder, exist_ok=True)
         file.stream.seek(0)
         file.save(filepath)
+
+    # Magic-byte & structure verification: reject non-image or corrupt payloads
+    try:
+        with Image.open(filepath) as img:
+            img.verify()
+            if (img.format or '').upper() not in {'JPEG', 'PNG', 'WEBP', 'GIF'}:
+                raise ValueError('Unsupported image format')
+    except Exception:
+        try:
+            os.remove(filepath)
+        except OSError:
+            pass
+        return None
 
     latitude = _parse_gps(form.get(f'photo_latitude_{gps_suffix}'))
     longitude = _parse_longitude(form.get(f'photo_longitude_{gps_suffix}'))
@@ -1085,11 +1101,17 @@ def setup():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        from rate_limit import is_rate_limited, record_failure, clear_failures
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         if not username or not password:
             flash('Username and password are required.', 'error')
             return redirect(url_for('login'))
+        rate_key = f"web:{request.remote_addr or 'unknown'}:{username.lower()}"
+        limited, retry_after = is_rate_limited(rate_key)
+        if limited:
+            flash(f'Too many failed login attempts. Try again in {retry_after} seconds.', 'error')
+            return redirect(url_for('login')), 429
         db = Session()
         try:
             if CENTRAL_MODE:
@@ -1101,11 +1123,14 @@ def login():
                     return redirect(url_for('setup'))
                 user = db.query(User).filter_by(username=username, site_id=site.site_id).first()
             if not user or not check_password_hash(user.password_hash, password):
+                record_failure(rate_key)
                 flash('Invalid username or password.', 'error')
                 return redirect(url_for('login'))
             if not user.is_active:
+                record_failure(rate_key)
                 flash('Your account is disabled.', 'error')
                 return redirect(url_for('login'))
+            clear_failures(rate_key)
             if CENTRAL_MODE:
                 try:
                     list_accessible_sites(db, user) if is_hq_admin(user) else resolve_site_context(db, user)

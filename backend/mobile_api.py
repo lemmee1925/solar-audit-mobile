@@ -181,6 +181,12 @@ def issue_token():
     if not username or not isinstance(password, str) or not password:
         return _error('Username and password are required.', 400)
 
+    from rate_limit import is_rate_limited, record_failure, clear_failures
+    rate_key = f"mobile:{request.remote_addr or 'unknown'}:{username.lower()}"
+    limited, retry_after = is_rate_limited(rate_key)
+    if limited:
+        return _error(f'Too many failed sign-in attempts. Retry in {retry_after} seconds.', 429)
+
     db = Session()
     try:
         if central_mode:
@@ -197,15 +203,10 @@ def issue_token():
 
         password_matches = bool(user and check_password_hash(user.password_hash, password))
 
-        print(
-            f"[MOBILE LOGIN DEBUG] site={site.site_id if site else None!r}, "
-            f"user_found={user is not None}, "
-            f"active={user.is_active if user else None}, "
-            f"password_matches={password_matches}"
-        )
-
         if not user or not user.is_active or not password_matches:
+            record_failure(rate_key)
             return _error('Invalid username or password.', 401)
+        clear_failures(rate_key)
 
         token = serializer.dumps({
             'sub': str(user.id),

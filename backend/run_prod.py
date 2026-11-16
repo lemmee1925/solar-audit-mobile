@@ -20,7 +20,8 @@ from waitress import serve
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     host = os.environ.get("HOST", "0.0.0.0")
-    threads = int(os.environ.get("WAITRESS_THREADS", 8))
+    threads = int(os.environ.get("WAITRESS_THREADS", 24))
+    connection_limit = int(os.environ.get("WAITRESS_CONNECTION_LIMIT", 500))
     print(f"Solar Audit server starting on http://127.0.0.1:{port} (bound to {host}:{port}, Waitress {threads} threads)", flush=True)
     print(f"Native Mobile API v1 endpoint: http://127.0.0.1:{port}/api/mobile/v1", flush=True)
-    serve(app, host=host, port=port, threads=threads, channel_timeout=180)
+    serve(app, host=host, port=port, threads=threads, connection_limit=connection_limit, channel_timeout=180)

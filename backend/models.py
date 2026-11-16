@@ -26,6 +26,14 @@ if DATABASE_URL.startswith('sqlite'):
     # hand requests to different threads; each request still opens and
     # closes its own Session(), so this is safe.
     _engine_kwargs['connect_args'] = {'check_same_thread': False}
+else:
+    # PostgreSQL pool sizing for 100+ concurrent mobile/web users
+    _engine_kwargs.update({
+        'pool_size': int(os.environ.get('DB_POOL_SIZE', '20')),
+        'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', '30')),
+        'pool_pre_ping': True,
+        'pool_recycle': int(os.environ.get('DB_POOL_RECYCLE', '1800')),
+    })
 
 engine = create_engine(DATABASE_URL, **_engine_kwargs)
 Base = declarative_base()

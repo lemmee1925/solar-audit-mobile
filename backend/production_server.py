@@ -17,10 +17,12 @@ if not _truthy(os.environ.get("CENTRAL_MODE")):
 if not os.environ.get("SECRET_KEY"):
     raise SystemExit("SECRET_KEY is required for production.")
 
-threads = int(os.environ.get("WAITRESS_THREADS", "8"))
+threads = int(os.environ.get("WAITRESS_THREADS", "24"))
+connection_limit = int(os.environ.get("WAITRESS_CONNECTION_LIMIT", "500"))
+channel_timeout = int(os.environ.get("WAITRESS_CHANNEL_TIMEOUT", "180"))
 host = os.environ.get("WAITRESS_HOST", "127.0.0.1")
 port = int(os.environ.get("WAITRESS_PORT", "8080"))
 
 print(f"Solar Audit production server: http://{host}:{port}")
-print(f"Waitress threads: {threads}")
-serve(app, host=host, port=port, threads=threads, connection_limit=200, channel_timeout=120)
+print(f"Waitress threads: {threads}, connection_limit: {connection_limit}")
+serve(app, host=host, port=port, threads=threads, connection_limit=connection_limit, channel_timeout=channel_timeout)
