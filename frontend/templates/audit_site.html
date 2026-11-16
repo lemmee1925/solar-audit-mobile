@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}Site Details{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Audit Site Details</div>
+    <div class="page-sub">Enter the site capacity and component counts for this audit.</div>
+  </div>
+  <a href="{{ url_for('audit_equipment', audit_id=audit.id) }}" class="btn btn-ghost">Skip to Equipment</a>
+</div>
+<div class="wizard">
+  <div class="wizard-step done"><span class="step-num">1</span> Basic Info</div>
+  <div class="wizard-step active"><span class="step-num">2</span> Site Details</div>
+  <div class="wizard-step">3</div>
+  <div class="wizard-step">4</div>
+</div>
+<div class="audit-banner">Audit ID: {{ audit.id }} — Plant: {{ plant.name if plant else 'Unknown' }}</div>
+<div class="card">
+  <form action="{{ url_for('audit_site_post', audit_id=audit.id) }}" method="post">
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="no_of_blocks">No. of Blocks</label>
+        <input type="number" id="no_of_blocks" name="no_of_blocks" value="{{ site_detail.no_of_blocks if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="dc_capacity">DC Capacity (MWp)</label>
+        <input type="number" step="0.01" id="dc_capacity" name="dc_capacity" value="{{ site_detail.dc_capacity if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="ac_capacity">AC Capacity (MVA)</label>
+        <input type="number" step="0.01" id="ac_capacity" name="ac_capacity" value="{{ site_detail.ac_capacity if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="central_inverter_type">Central Inverter Type</label>
+        <input type="text" id="central_inverter_type" name="central_inverter_type" value="{{ site_detail.central_inverter_type if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="central_inverter_count">Central Inverter Count</label>
+        <input type="number" id="central_inverter_count" name="central_inverter_count" value="{{ site_detail.central_inverter_count if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="string_inverter_type">String Inverter Type</label>
+        <input type="text" id="string_inverter_type" name="string_inverter_type" value="{{ site_detail.string_inverter_type if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="string_inverter_count">String Inverter Count</label>
+        <input type="number" id="string_inverter_count" name="string_inverter_count" value="{{ site_detail.string_inverter_count if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="scb_count">SCB Count</label>
+        <input type="number" id="scb_count" name="scb_count" value="{{ site_detail.scb_count if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="mms_type">MMS Type</label>
+        <input type="text" id="mms_type" name="mms_type" value="{{ site_detail.mms_type if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="mms_count">MMS Count</label>
+        <input type="number" id="mms_count" name="mms_count" value="{{ site_detail.mms_count if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="transformer_type">Transformer Type</label>
+        <input type="text" id="transformer_type" name="transformer_type" value="{{ site_detail.transformer_type if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="transformer_count">Transformer Count</label>
+        <input type="number" id="transformer_count" name="transformer_count" value="{{ site_detail.transformer_count if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="clamps_connectors_count">Clamps & Connectors Count</label>
+        <input type="number" id="clamps_connectors_count" name="clamps_connectors_count" value="{{ site_detail.clamps_connectors_count if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="lt_panel_type">LT Panel Type</label>
+        <input type="text" id="lt_panel_type" name="lt_panel_type" value="{{ site_detail.lt_panel_type if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="lt_panel_count">LT Panel Count</label>
+        <input type="number" id="lt_panel_count" name="lt_panel_count" value="{{ site_detail.lt_panel_count if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="ht_panel_type">HT Panel Type</label>
+        <input type="text" id="ht_panel_type" name="ht_panel_type" value="{{ site_detail.ht_panel_type if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="ht_panel_count">HT Panel Count</label>
+        <input type="number" id="ht_panel_count" name="ht_panel_count" value="{{ site_detail.ht_panel_count if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="acdb_count">ACDB Count</label>
+        <input type="number" id="acdb_count" name="acdb_count" value="{{ site_detail.acdb_count if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="ups_db_battery_count">UPS DB + Battery Count</label>
+        <input type="number" id="ups_db_battery_count" name="ups_db_battery_count" value="{{ site_detail.ups_db_battery_count if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="lightning_protection_count">Lightning Protection Count</label>
+        <input type="number" id="lightning_protection_count" name="lightning_protection_count" value="{{ site_detail.lightning_protection_count if site_detail else '' }}">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="dc_earthing">DC Earthing</label>
+        <input type="text" id="dc_earthing" name="dc_earthing" value="{{ site_detail.dc_earthing if site_detail else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="ac_earthing">AC Earthing</label>
+        <input type="text" id="ac_earthing" name="ac_earthing" value="{{ site_detail.ac_earthing if site_detail else '' }}">
+      </div>
+    </div>
+    <div style="margin-top: 18px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+      <a href="{{ url_for('audit_equipment', audit_id=audit.id) }}" class="btn btn-ghost">Skip to Equipment</a>
+      <button type="submit" class="btn btn-primary">Save and Continue</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Submit Audit{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Submit Audit</div>
+    <div class="page-sub">Review your audit before locking it. The report is generated automatically on submission.</div>
+  </div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <a href="{{ url_for('audit_equipment', audit_id=audit.id) }}" class="btn btn-ghost">Technical</a>
+    <a href="{{ url_for('audit_safety', audit_id=audit.id) }}" class="btn btn-ghost">Safety</a>
+    <a href="{{ url_for('audit_civil', audit_id=audit.id) }}" class="btn btn-ghost">Civil / Infrastructure</a>
+    {% if audit.status == 'submitted' %}
+    <a href="{{ url_for('audit_report', audit_id=audit.id) }}" class="btn btn-primary">Download PDF</a>
+    <a href="{{ url_for('audit_export', audit_id=audit.id) }}" class="btn btn-ghost">Export Audit (ZIP)</a>
+    {% endif %}
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Audit Summary</div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div class="stat-card" style="border-top-color:#3B82F6;"><div class="stat-label">Plant</div><div class="stat-value">{{ plant.name if plant else 'N/A' }}</div></div>
+    <div class="stat-card" style="border-top-color:#10B981;"><div class="stat-label">Auditor</div><div class="stat-value">{{ audit.auditor_name }}</div></div>
+    <div class="stat-card" style="border-top-color:#F59E0B;"><div class="stat-label">Status</div><div class="stat-value">{{ audit.status }}</div></div>
+  </div>
+  <div class="section-div">Equipment Audit Details</div>
+  <table>
+    <thead><tr><th>Asset</th><th>Type</th><th>Location</th><th>Rank</th><th>Audited</th></tr></thead>
+    <tbody>
+      {% for asset in assets %}
+      <tr>
+        <td>{{ asset.asset_name }}</td>
+        <td>{{ asset.asset_type_name }}</td>
+        <td>{{ asset.location or 'N/A' }}</td>
+        <td>{{ asset.rank or 'N/A' }}</td>
+        <td>{{ 'Yes' if asset.is_audited else 'No' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No asset audit records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px;">
+    <div class="stat-card" style="border-top-color:#10B981;"><div class="stat-label">Total Responses</div><div class="stat-value">{{ total_responses }}</div></div>
+    <div class="stat-card" style="border-top-color:#10B981;"><div class="stat-label">Complied</div><div class="stat-value" style="color:#065F46;">{{ pass_count }}</div></div>
+    <div class="stat-card" style="border-top-color:#EF4444;"><div class="stat-label">Not Complied</div><div class="stat-value" style="color:#991B1B;">{{ fail_count }}</div></div>
+    <div class="stat-card" style="border-top-color:#9CA3AF;"><div class="stat-label">Not Applicable</div><div class="stat-value">{{ na_count }}</div></div>
+    <div class="stat-card" style="border-top-color:#3B82F6;"><div class="stat-label">Compliance</div><div class="stat-value">{{ '%.1f'|format(result.compliance_pct) }}%</div></div>
+    <div class="stat-card" style="border-top-color:#3B82F6;"><div class="stat-label">Audit score</div><div class="stat-value">{{ '%.1f'|format(result.score_pct) }}%</div></div>
+    <div class="stat-card" style="border-top-color:#3B82F6;"><div class="stat-label">Site rating</div><div class="stat-value" style="font-size:18px;">{{ result.rating }}</div></div>
+  </div>
+
+  <div class="muted" style="margin-top:12px;">After submission, open each observation to classify severity, describe the finding, assign a responsible team and set its target closure date.</div>
+
+
+  <div class="section-div" style="margin-top: 18px;">Observations ({{ obs_rows|length }})</div>
+  <div style="overflow-x: auto;">
+  <table>
+    <thead><tr><th>Equipment</th><th>Checkpoint / edit finding</th><th>Responsible</th><th>Target date</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for r in obs_rows %}
+      <tr>
+        <td>{{ r.equipment }}</td>
+        <td><a href="{{ url_for('observation_detail', obs_id=r.obs.id) }}">{{ r.question.question_text|truncate(70) }} · Complete finding details</a></td>
+        <td>{{ r.obs.responsible_person or '—' }}</td>
+        <td>{{ r.obs.target_date or '—' }}</td>
+        <td>{{ r.status_label }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No observations &mdash; no checkpoint is marked Not Complied.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if audit.status != 'submitted' %}
+  <div class="locked-banner" style="margin-top: 18px; color: #92400E; background: #FEF7C3; border-color: #FDE68A;">Once you submit the audit, it will be locked and no further edits will be allowed.</div>
+  <form action="{{ url_for('audit_submit_post', audit_id=audit.id) }}" method="post" onsubmit="return confirm('Submit this audit and lock it for editing?');" style="margin-top: 18px;">
+    <button type="submit" class="btn btn-success" >Submit Audit</button>
+    <a href="{{ url_for('audit_equipment', audit_id=audit.id) }}" class="btn btn-ghost">Continue Editing</a>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Edit Site{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Edit Site</h1><p class="page-sub">{{ site.site_name }} ({{ site.site_id }})</p></div><a href="{{ url_for('hq_dashboard') }}" class="btn btn-ghost">← HQ Overview</a></div>
+<div class="card" style="max-width:620px;"><form method="POST">
+<div class="form-row"><div class="form-group"><label>Site ID</label><input value="{{ site.site_id }}" disabled></div></div>
+<div class="form-row"><div class="form-group"><label>Site Name *</label><input name="site_name" value="{{ site.site_name }}" required></div></div>
+<div class="form-row"><div class="form-group"><label>Organization</label><select name="organization_id">{% for org in organizations %}<option value="{{ org.id }}" {% if site.organization_id == org.id %}selected{% endif %}>{{ org.name }}</option>{% endfor %}</select></div></div>
+<div style="margin-top:22px;"><button class="btn btn-primary" type="submit">Save Changes</button></div>
+</form></div>
+{% endblock %}

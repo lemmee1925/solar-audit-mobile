@@ -1,0 +1,30 @@
+﻿# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# Android / Capacitor
+android/.gradle/
+android/app/build/
+android/build/
+*.apk
+*.aab
+
+# Secrets & OS
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db

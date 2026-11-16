@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}Observation{% endblock %}
+{% block extra_style %}
+.od-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.od-field { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+.od-field .k { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); margin-bottom: 4px; }
+.od-field .v { font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
+.photo-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 14px; }
+.photo-row a { display: block; width: 96px; height: 96px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line-strong); position: relative; }
+.photo-row img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-row .del { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--critical); background: var(--surface); color: var(--critical); cursor: pointer; font-size: 16px; line-height: 1; }
+.sev-pill { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 5px; text-transform: uppercase; }
+.sev-pill.critical { background: var(--critical-soft); color: var(--critical); }
+.sev-pill.major { background: var(--high-soft); color: var(--high); }
+.sev-pill.minor { background: var(--medium-soft); color: var(--medium); }
+.sev-pill.none { background: var(--bg); color: var(--ink-3); }
+.stepper { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 16px; }
+.step { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: var(--bg); color: var(--ink-3); border: 1px solid var(--line); }
+.step.done { background: var(--low-soft); color: var(--low); }
+.step.now { background: var(--accent); color: #fff; border-color: var(--accent); }
+.step.bad { background: var(--critical-soft); color: var(--critical); border-color: var(--critical); }
+.action-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.timeline { list-style: none; border-left: 2px solid var(--line); margin-left: 6px; padding-left: 14px; }
+.timeline li { margin-bottom: 12px; font-size: 13px; }
+.timeline .when { color: var(--ink-3); font-size: 12px; }
+textarea, input[type=text], input[type=date] { width: 100%; padding: 10px; border: 1px solid var(--line-strong); border-radius: 8px; font-family: sans-serif; font-size: 14px; }
+.hint { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+{% endblock %}
+{% block content %}
+{% set s = obs.status %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Observation</div>
+    <div class="page-sub"><a href="{{ url_for('audit_submit', audit_id=audit.id) }}">{{ audit.audit_number or audit.id[:8] }}</a> · {{ plant.name if plant }} · {{ asset.asset_name if asset else 'Safety' }} · {{ question.question_text if question }}</div>
+  </div>
+  <a href="{{ url_for('observations_list') }}" class="btn btn-ghost">← All observations</a>
+</div>
+
+<div class="stepper" aria-label="Closure workflow">
+  <span class="step {{ 'done' if s != 'open' else 'now' }}">Raised</span>
+  <span class="step {{ 'now' if s in ['in_progress','rejected','reopened'] else ('done' if s in ['submitted','closed'] else '') }}">Action in progress</span>
+  <span class="step {{ 'now' if s == 'submitted' else ('done' if s == 'closed' else '') }}">Review</span>
+  <span class="step {{ 'done' if s == 'closed' else '' }}">Closed</span>
+  <span class="step {{ 'bad' if overdue or s in ['rejected','reopened'] else '' }}" style="{{ '' if overdue or s in ['rejected','reopened'] else 'display:none' }}">{{ 'Overdue' if overdue else obs_status_labels[s] }}</span>
+</div>
+
+<div class="card">
+  <div class="card-title" style="margin-bottom:10px;">{{ question.question_text if question }}</div>
+  <div class="od-grid">
+    <div class="od-field"><div class="k">Finding type</div><div class="v"><b>{{ obs.finding_type or 'NC' }}</b>{% if (obs.finding_type or 'NC') == 'OFI' %} · Opportunity for Improvement{% else %} · Non-Conformance{% endif %}</div></div>
+    <div class="od-field"><div class="k">Status</div><div class="v"><b>{{ obs_display_status(obs) }}</b>{% if obs.reopen_count %} (reopened {{ obs.reopen_count }}×){% endif %}</div></div>
+    <div class="od-field"><div class="k">Severity</div><div class="v"><span class="sev-pill {{ obs.severity or 'none' }}">{{ obs.severity|sev_label if obs.severity else 'Not set' }}</span></div></div>
+    <div class="od-field"><div class="k">Responsible person / team</div><div class="v">{{ obs.responsible_person or '—' }}</div></div>
+    <div class="od-field"><div class="k">Target closure date</div><div class="v">{{ obs.target_date or '—' }}</div></div>
+    <div class="od-field"><div class="k">Open for</div><div class="v">{{ age_days }} day{{ 's' if age_days != 1 }}</div></div>
+    <div class="od-field"><div class="k">Review status</div><div class="v">{{ obs.review_status|capitalize }}</div></div>
+  </div>
+  <div class="od-field" style="margin-bottom:10px;"><div class="k">Observation</div><div class="v">{{ obs.observation or '—' }}</div></div>
+  {% if obs.remarks or (resp and resp.remarks) %}
+  <div class="od-field" style="margin-bottom:10px;"><div class="k">Remarks</div><div class="v">{{ obs.remarks or '' }}{% if resp and resp.remarks %}{{ ' · ' if obs.remarks }}{{ resp.remarks }}{% endif %}</div></div>
+  {% endif %}
+  <div class="k" style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--ink-3);">Evidence photos (from the audit)</div>
+  <div class="photo-row">
+    {% for p in finding_photos %}<a href="{{ url_for('uploaded_file', filename=p.file_path) }}" target="_blank"><img src="{{ url_for('uploaded_file', filename=p.file_path) }}" alt="Evidence"></a>
+    {% else %}<span style="color:var(--ink-3);font-size:13px;">No photos were attached.</span>{% endfor %}
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-title" style="margin-bottom:6px;">Finding details</div>
+  <div class="hint" style="margin-bottom:12px;">Complete the finding details here after the audit is submitted. Changes are recorded in History and reflected in the next report download.</div>
+  {% if audit.status != 'submitted' %}
+  <div class="hint">Submit the audit first. After submission, this section becomes editable without unlocking the audit checkpoints.</div>
+  {% elif s not in ['closed', 'withdrawn'] %}
+  <form data-no-sticky method="post" action="{{ url_for('observation_details_update', obs_id=obs.id) }}">
+    <div class="od-grid">
+      <div class="form-group"><label for="finding_severity">Severity</label>
+        <select id="finding_severity" name="severity" style="padding:10px;border:1px solid var(--line-strong);border-radius:8px;width:100%;">
+          <option value="">Not classified yet</option>
+          {% for k,l in [('critical','Critical'),('major','Major'),('minor','Minor')] %}<option value="{{ k }}" {% if obs.severity == k %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select></div>
+      <div class="form-group"><label for="finding_owner">Responsible person / team</label><input type="text" id="finding_owner" name="responsible_person" value="{{ obs.responsible_person or '' }}"></div>
+      <div class="form-group"><label for="finding_target">Target closure date</label><input type="date" id="finding_target" name="target_date" value="{{ obs.target_date or '' }}"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;"><label for="finding_observation">Observation / finding details</label><textarea id="finding_observation" name="observation" rows="3" placeholder="Describe the finding">{{ obs.observation or '' }}</textarea></div>
+    <div class="form-group"><label for="finding_remarks">Observation remarks</label><textarea id="finding_remarks" name="remarks" rows="2" placeholder="Additional context or notes">{{ obs.remarks or '' }}</textarea></div>
+    <button class="btn btn-primary" type="submit" style="margin-top:12px;">Save finding details</button>
+  </form>
+  {% else %}
+  <div class="hint">This observation is closed. Reopen it from the review section to edit finding details.</div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-title" style="margin-bottom:10px;">Action &amp; closure evidence</div>
+  {% if working %}
+  <form data-no-sticky method="post" action="{{ url_for('observation_update', obs_id=obs.id) }}" enctype="multipart/form-data" data-obs-form>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label for="action_taken">Action taken</label>
+      <textarea id="action_taken" name="action_taken" rows="3" placeholder="What was done to fix this?">{{ obs.action_taken or '' }}</textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label for="closure_date">Closure date (date the fix was completed)</label>
+      <input type="date" id="closure_date" name="closure_date" value="{{ obs.closure_date or '' }}">
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label for="closure_photos">Closure evidence photos</label>
+      <input type="file" id="closure_photos" name="closure_photos" accept="image/*" capture="environment" multiple>
+      <div class="hint">Take a photo directly with the camera or pick from the gallery. At least one is needed to submit for review.</div>
+      <input type="hidden" name="photo_latitude_closure" id="photo_latitude_closure">
+      <input type="hidden" name="photo_longitude_closure" id="photo_longitude_closure">
+      <input type="hidden" name="photo_accuracy_closure" id="photo_accuracy_closure">
+      <input type="hidden" name="photo_captured_at_closure" id="photo_captured_at_closure">
+    </div>
+    <div class="photo-row">
+      {% for p in closure_photos %}
+      <div style="position:relative;"><a href="{{ url_for('uploaded_file', filename=p.file_path) }}" target="_blank"><img src="{{ url_for('uploaded_file', filename=p.file_path) }}" alt="Closure evidence"></a>
+        <button type="button" class="del" data-del="{{ url_for('observation_photo_delete', obs_id=obs.id, photo_id=p.id) }}" aria-label="Remove photo">&times;</button></div>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="do" value="save" id="do_field">
+    <div class="action-btns">
+      {% if s in ['open','rejected','reopened'] %}<button class="btn btn-ghost" type="submit" onclick="document.getElementById('do_field').value='start'">Start work</button>{% endif %}
+      <button class="btn btn-ghost" type="submit" onclick="document.getElementById('do_field').value='save'">Save progress</button>
+      <button class="btn btn-primary" type="submit" onclick="document.getElementById('do_field').value='submit'">Submit for review</button>
+    </div>
+  </form>
+  {% else %}
+  <div class="od-grid">
+    <div class="od-field"><div class="k">Action taken</div><div class="v">{{ obs.action_taken or '—' }}</div></div>
+    <div class="od-field"><div class="k">Closure date</div><div class="v">{{ obs.closure_date or '—' }}</div></div>
+  </div>
+  <div class="photo-row">
+    {% for p in closure_photos %}<a href="{{ url_for('uploaded_file', filename=p.file_path) }}" target="_blank"><img src="{{ url_for('uploaded_file', filename=p.file_path) }}" alt="Closure evidence"></a>
+    {% else %}<span style="color:var(--ink-3);font-size:13px;">No closure evidence.</span>{% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-title" style="margin-bottom:10px;">Quality / Engineering review</div>
+  {% if obs.reviewer_comments %}
+  <div class="od-field" style="margin-bottom:12px;"><div class="k">Reviewer comments{% if obs.reviewed_by %} — {{ obs.reviewed_by }}{% endif %}</div><div class="v">{{ obs.reviewer_comments }}</div></div>
+  {% endif %}
+  {% if user_is_reviewer %}
+    {% if s == 'submitted' %}
+    <form data-no-sticky method="post" action="{{ url_for('observation_review', obs_id=obs.id) }}">
+      <div class="form-group" style="margin-bottom:10px;"><label for="rc1">Reviewer comments (required to reject)</label>
+        <textarea id="rc1" name="reviewer_comments" rows="2"></textarea></div>
+      <div class="action-btns">
+        <button class="btn btn-success" name="decision" value="accept" type="submit">Accept &amp; close</button>
+        <button class="btn btn-danger" name="decision" value="reject" type="submit">Reject</button>
+      </div>
+    </form>
+    {% elif s == 'closed' %}
+    <form data-no-sticky method="post" action="{{ url_for('observation_review', obs_id=obs.id) }}" onsubmit="return confirm('Reopen this observation?');">
+      <div class="form-group" style="margin-bottom:10px;"><label for="rc2">Reason for reopening (required)</label>
+        <textarea id="rc2" name="reviewer_comments" rows="2"></textarea></div>
+      <button class="btn btn-ghost" name="decision" value="reopen" type="submit">Reopen</button>
+    </form>
+    {% else %}
+    <div style="color:var(--ink-3);font-size:13px;">Waiting for the responsible person to submit the action for review.</div>
+    {% endif %}
+  {% else %}
+    <div style="color:var(--ink-3);font-size:13px;">Only a Quality/Engineering reviewer (engineer or admin) can accept, reject or reopen. Current status: <b>{{ obs_display_status(obs) }}</b>.</div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-title" style="margin-bottom:10px;">History</div>
+  <ul class="timeline">
+    {% for e in events %}
+    <li><b>{{ e.event_type|replace('_',' ')|capitalize }}</b>{% if e.to_status %} → {{ obs_status_labels.get(e.to_status, e.to_status) }}{% endif %}
+      <div class="when">{{ e.actor or '—' }} · {{ e.created_at.strftime('%d %b %Y %H:%M') if e.created_at }}</div>
+      {% if e.comment %}<div>{{ e.comment }}</div>{% endif %}</li>
+    {% else %}<li>No history yet.</li>{% endfor %}
+  </ul>
+</div>
+
+<script>
+document.querySelectorAll('.photo-row .del').forEach(function (b) {
+  b.addEventListener('click', function () {
+    if (!confirm('Remove this evidence photo?')) return;
+    fetch(b.getAttribute('data-del'), { method: 'POST' }).then(function (r) { return r.json(); })
+      .then(function (d) { if (d.success) location.reload(); else alert(d.error || 'Could not remove'); });
+  });
+});
+var cp = document.getElementById('closure_photos');
+if (cp) cp.addEventListener('change', function () {
+  if (!cp.files.length) return;
+  var clear = function () { cp.value = ''; alert('GPS location is required for audit photos. Turn on Location permission and try again.'); };
+  if (!navigator.geolocation) { clear(); return; }
+  navigator.geolocation.getCurrentPosition(function (p) {
+    document.getElementById('photo_latitude_closure').value = p.coords.latitude;
+    document.getElementById('photo_longitude_closure').value = p.coords.longitude;
+    document.getElementById('photo_accuracy_closure').value = p.coords.accuracy || '';
+    document.getElementById('photo_captured_at_closure').value = new Date().toISOString();
+  }, clear, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+});
+</script>
+{% endblock %}

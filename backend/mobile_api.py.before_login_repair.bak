@@ -1,0 +1,310 @@
+"""Versioned native API adapter for the existing Flask Solar Audit database.
+
+Disabled by default. Enable only after setting MOBILE_API_ENABLED=1 and a
+random MOBILE_API_SIGNING_SECRET of at least 32 characters. This adapter is
+intentionally scoped to this install's configured site; the current data model
+is not a central multi-site directory.
+"""
+import hashlib
+import json
+import os
+from datetime import datetime, timezone
+from functools import wraps
+
+from flask import Blueprint, current_app, jsonify, request, g, session as flask_session
+from flask_login import login_user
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from werkzeug.security import check_password_hash
+
+from models import (Session, User, Plant, AssetType, Asset, AuditQuestion,
+                    AuditSection, UserPlantAssignment)
+from site_config import load_site_config
+from site_scope import assigned_plant_ids, load_scoring_config
+from version import APP_VERSION, EXPORT_SCHEMA_VERSION
+
+mobile_api = Blueprint('mobile_api_v1', __name__, url_prefix='/api/mobile/v1')
+TOKEN_MAX_AGE_SECONDS = 8 * 60 * 60
+TOKEN_SALT = 'solar-audit-mobile-access-v1'
+_LEGACY_SYNC_HANDLERS = {}
+
+def configure_legacy_sync_handlers(audit_handler, photo_handler, complete_handler):
+    """Register the existing PWA sync business-rule handlers.
+
+    Native routes delegate to the same handlers instead of duplicating audit
+    creation, photo persistence, observation validation, or scoring logic.
+    """
+    _LEGACY_SYNC_HANDLERS.update({
+        'audit': audit_handler, 'photo': photo_handler, 'complete': complete_handler,
+    })
+
+def _call_legacy_handler(name):
+    handler = _LEGACY_SYNC_HANDLERS.get(name)
+    if handler is None:
+        return _error('Native audit sync is not configured on this server.', 503)
+    # The bearer token has already been verified and the user is site-scoped.
+    # Establish Flask-Login's request-local user, then invoke the underlying
+    # existing handler without its cookie-only login_required wrapper.
+    user = g.mobile_db.query(User).filter_by(id=g.mobile_user_id, site_id=g.mobile_site.site_id).first()
+    if not user or not user.is_active:
+        return _error('User is unavailable or access has been revoked.', 401)
+    login_user(user, remember=False, fresh=True)
+    try:
+        underlying = getattr(handler, '__wrapped__', None)
+        if underlying is None:
+            return _error('Legacy sync handler cannot be safely delegated.', 503)
+        return underlying()
+    finally:
+        # Do not turn a bearer-token request into a persistent cookie session.
+        flask_session.clear()
+
+
+def _enabled():
+    return os.environ.get('MOBILE_API_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
+
+
+def _serializer():
+    secret = os.environ.get('MOBILE_API_SIGNING_SECRET', '')
+    if len(secret) < 32:
+        return None
+    return URLSafeTimedSerializer(secret_key=secret, salt=TOKEN_SALT)
+
+
+def _error(message, status):
+    return jsonify({'ok': False, 'error': message}), status
+
+
+def _bearer_required(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        if not _enabled():
+            return _error('Native API is disabled by server configuration.', 503)
+        serializer = _serializer()
+        if serializer is None:
+            current_app.logger.error('Mobile API enabled without a valid signing secret')
+            return _error('Native API authentication is not configured.', 503)
+        header = request.headers.get('Authorization', '')
+        if not header.startswith('Bearer '):
+            return _error('A bearer access token is required.', 401)
+        token = header[7:].strip()
+        try:
+            claims = serializer.loads(token, max_age=TOKEN_MAX_AGE_SECONDS)
+        except SignatureExpired:
+            return _error('Access token expired. Sign in again.', 401)
+        except BadSignature:
+            return _error('Invalid access token.', 401)
+        site = load_site_config()
+        if not site or claims.get('sid') != site.site_id:
+            return _error('Token site is no longer valid for this installation.', 401)
+        db = Session()
+        try:
+            user = db.query(User).filter_by(id=claims.get('sub'), site_id=site.site_id).first()
+            if not user or not user.is_active:
+                return _error('User is unavailable or access has been revoked.', 401)
+            g.mobile_user_id = str(user.id)
+            g.mobile_user_role = user.role
+            g.mobile_username = user.username
+            g.mobile_full_name = user.full_name
+            g.mobile_site = site
+            # Keep the DB session alive only for this request.
+            g.mobile_db = db
+            response = fn(*args, **kwargs)
+            return response
+        finally:
+            db.close()
+    return wrapped
+
+
+@mobile_api.teardown_request
+def _close_mobile_db(_exc):
+    db = getattr(g, 'mobile_db', None)
+    if db is not None:
+        # close() is idempotent; the decorator also closes on early return.
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@mobile_api.post('/auth/token') 
+def issue_token():
+    """Exchange existing site-scoped username/password for a short-lived token.
+
+    HTTPS is mandatory at deployment. This endpoint is disabled unless explicitly
+    enabled by an operator and uses the existing user password hash only.
+    """
+    if not _enabled():
+        return _error('Native API is disabled by server configuration.', 503)
+    serializer = _serializer()
+    if serializer is None:
+        return _error('Native API authentication is not configured.', 503)
+    site = load_site_config()
+    if not site:
+        return _error('This installation has not been configured.', 503)
+    payload = request.get_json(silent=True) or {}
+    username = str(payload.get('username', '')).strip()
+    password = payload.get('password', '')
+    if not username or not isinstance(password, str) or not password:
+        return _error('Username and password are required.', 400)
+    db = Session()
+    try:
+        user = db.query(User).filter_by(
+            username=username,
+            site_id=site.site_id
+    ).first()
+    
+    password_matches = bool(
+            user and check_password_hash(user.password_hash, password)
+    )
+
+    print(
+        f"[MOBILE LOGIN DEBUG] site={site.site_id!r}, "
+            f"user_found={user is not None}, "
+            f"active={user.is_active if user else None}, "
+            f"password_matches={password_matches}"
+    )
+
+    if not user or not user.is_active or not password_matches:
+            return _error('Invalid username or password.', 401)
+        token = serializer.dumps({'sub': str(user.id), 'sid': site.site_id, 'ver': 1})
+        return jsonify({
+            'ok': True, 'access_token': token, 'token_type': 'Bearer',
+            'expires_in': TOKEN_MAX_AGE_SECONDS,
+            'user': {'id': str(user.id), 'username': user.username,
+                     'full_name': user.full_name, 'role': user.role},
+            'site': {'id': site.site_id, 'name': site.site_name},
+        })
+    finally:
+        db.close()
+
+
+@mobile_api.get('/bootstrap')
+@_bearer_required
+def bootstrap():
+    db = g.mobile_db
+    site = g.mobile_site
+    user = db.query(User).filter_by(id=g.mobile_user_id, site_id=site.site_id).first()
+    allowed_ids = assigned_plant_ids(db, user)
+    plant_query = db.query(Plant).filter_by(site_id=site.site_id).order_by(Plant.name)
+    if allowed_ids is not None:
+        plant_query = plant_query.filter(Plant.id.in_(allowed_ids))
+    plants = [{'id': str(p.id), 'name': p.name, 'location': p.location,
+               'capacity_mw': p.capacity_mw} for p in plant_query.all()]
+    reference = _build_reference_data(db, site.site_id, plants, allowed_ids)
+    canonical = json.dumps(reference, sort_keys=True, separators=(',', ':'), default=str)
+    digest = hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+    return jsonify({
+        'ok': True, 'api_version': 'v1', 'schema_version': EXPORT_SCHEMA_VERSION,
+        'application_version': APP_VERSION, 'server_time': datetime.now(timezone.utc).isoformat(),
+        'authorization_checked_at': datetime.now(timezone.utc).isoformat(),
+        'user': {'id': g.mobile_user_id, 'username': g.mobile_username,
+                 'full_name': g.mobile_full_name, 'role': g.mobile_user_role},
+        # Current Flask data model represents one configured site per installation.
+        'sites': [{'id': site.site_id, 'name': site.site_name,
+                   'plants': plants, 'reference_version': digest}],
+        'reference_version': digest,
+        'capabilities': {'reference_data_download': True, 'audit_sync': True,
+                         'photo_upload': True, 'server_completion': True,
+                         'sync_payload_contract': 'existing-pwa-v1'},
+    })
+
+
+@mobile_api.get('/sites/<site_id>/reference-data')
+@_bearer_required
+def site_reference_data(site_id):
+    site = g.mobile_site
+    if site_id != site.site_id:
+        return _error('Site is not available to this user on this installation.', 404)
+    db = g.mobile_db
+    user = db.query(User).filter_by(id=g.mobile_user_id, site_id=site.site_id).first()
+    allowed_ids = assigned_plant_ids(db, user)
+    plant_query = db.query(Plant).filter_by(site_id=site.site_id).order_by(Plant.name)
+    if allowed_ids is not None:
+        plant_query = plant_query.filter(Plant.id.in_(allowed_ids))
+    plants = [{'id': str(p.id), 'name': p.name, 'location': p.location,
+               'capacity_mw': p.capacity_mw} for p in plant_query.all()]
+    data = _build_reference_data(db, site.site_id, plants, allowed_ids)
+    canonical = json.dumps(data, sort_keys=True, separators=(',', ':'), default=str)
+    digest = hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+    etag = '"' + digest + '"'
+    if request.headers.get('If-None-Match') == etag:
+        return current_app.response_class(status=304, headers={'ETag': etag})
+    return jsonify({'ok': True, 'complete': True, 'site_id': site.site_id,
+                    'schema_version': EXPORT_SCHEMA_VERSION,
+                    'reference_version': digest, 'reference_hash': digest,
+                    'generated_at': datetime.now(timezone.utc).isoformat(),
+                    'data': data}), 200, {'ETag': etag, 'Cache-Control': 'private, no-cache'}
+
+
+
+@mobile_api.post('/audits/<local_audit_id>/manifest')
+@_bearer_required
+def audit_manifest(local_audit_id):
+    """Idempotently upsert audit data through the existing PWA sync rules.
+
+    Body must use the existing /api/offline/sync/audit payload contract.
+    This deliberately does not invent a second mobile-specific audit schema.
+    """
+    payload = request.get_json(silent=True) or {}
+    if str(payload.get('local_uuid') or '') != str(local_audit_id):
+        return _error('Path audit ID must match payload local_uuid.', 400)
+    return _call_legacy_handler('audit')
+
+
+@mobile_api.post('/audits/<local_audit_id>/photos/<photo_id>')
+@_bearer_required
+def audit_photo(local_audit_id, photo_id):
+    """Upload one photo using the existing PWA photo validation and storage.
+
+    Multipart fields must include local_uuid=photo_id and
+    audit_local_uuid=local_audit_id plus the existing question/asset mapping.
+    """
+    if request.form.get('local_uuid') != photo_id or request.form.get('audit_local_uuid') != local_audit_id:
+        return _error('Path IDs must match multipart photo and audit UUIDs.', 400)
+    return _call_legacy_handler('photo')
+
+
+@mobile_api.post('/audits/<local_audit_id>/complete')
+@_bearer_required
+def audit_complete(local_audit_id):
+    """Explicit server completion using the existing scoring and NC checks."""
+    payload = request.get_json(silent=True) or {}
+    if str(payload.get('audit_local_uuid') or '') != str(local_audit_id):
+        return _error('Path audit ID must match payload audit_local_uuid.', 400)
+    return _call_legacy_handler('complete')
+
+
+def _build_reference_data(db, site_id, plants, allowed_ids):
+    plant_ids = [p['id'] for p in plants]
+    asset_query = db.query(Asset).filter_by(site_id=site_id, is_active=True)
+    if allowed_ids is not None:
+        if not plant_ids:
+            assets = []
+        else:
+            assets = asset_query.filter(Asset.plant_id.in_(plant_ids)).order_by(Asset.asset_name).all()
+    else:
+        assets = asset_query.order_by(Asset.asset_name).all()
+    asset_types = [{'id': t.id, 'name': t.name} for t in db.query(AssetType).order_by(AssetType.name).all()]
+    rows = db.query(AuditQuestion, AssetType, AuditSection).join(
+        AssetType, AuditQuestion.asset_type_id == AssetType.id, isouter=True
+    ).join(AuditSection, AuditQuestion.section_id == AuditSection.id, isouter=True).filter(
+        (AuditQuestion.is_active.isnot(False)) | (AuditQuestion.is_active.is_(None))
+    ).order_by(AuditSection.section_order, AuditQuestion.question_order, AuditQuestion.id).all()
+    questions = []
+    for q, asset_type, section in rows:
+        questions.append({'id': q.id, 'asset_type_id': q.asset_type_id,
+                          'asset_type_name': asset_type.name if asset_type else ('Civil / Infrastructure' if section and section.name == 'Civil / Infrastructure' else 'Site Safety'),
+                          'section_id': section.id if section else None,
+                          'section': section.name if section else 'Checklist',
+                          'text': q.question_text, 'mandatory': bool(q.is_mandatory),
+                          'order': q.question_order, 'weight': q.weight})
+    return {
+        'site_id': site_id,
+        'plants': plants,
+        'asset_types': asset_types,
+        'assets': [{'id': str(a.id), 'plant_id': str(a.plant_id) if a.plant_id else None,
+                    'asset_type_id': a.asset_type_id, 'name': a.asset_name}
+                   for a in assets],
+        'checklist': {'version': hashlib.sha256(json.dumps(questions, sort_keys=True, default=str).encode()).hexdigest(),
+                      'questions': questions},
+        'scoring': load_scoring_config(),
+    }

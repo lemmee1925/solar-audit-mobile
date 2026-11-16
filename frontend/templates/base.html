@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <meta name="theme-color" content="#1E5C42">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{% block title %}Solar Audit{% endblock %} — CleanMax Command Center</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* ===== Core tokens — CleanMax Audit Command Center ===== */
+      --ink: #181A17;
+      --ink-2: #52564E;
+      --ink-3: #8B8F85;
+      --bg: #F5F4EF;
+      --surface: #FFFFFF;
+      --line: #E4E1D6;
+      --line-strong: #D2CEBE;
+
+      --accent: #1E5C42;
+      /* deep emerald — primary product accent */
+      --accent-d: #123F2C;
+      --accent-soft: #E4EEE6;
+
+      --critical: #A32B22;
+      --critical-soft: #F7E9E6;
+      --high: #A15A12;
+      --high-soft: #F5EBDD;
+      --medium: #8C6D12;
+      --medium-soft: #F5EFDB;
+      --low: #3A6B4A;
+      --low-soft: #E7EFE6;
+
+
+      /* ===== Legacy tokens kept so existing components keep working ===== */
+      --amber: var(--ink);
+      --amber-d: var(--ink);
+      --amber-dd: var(--ink);
+      --amber-l: #EEECE3;
+      --green: var(--accent);
+      --green-l: var(--accent-soft);
+      --red: var(--critical);
+      --red-l: var(--critical-soft);
+      --blue: #395A82;
+      --blue-l: #E7ECF2;
+      --border: var(--line);
+      --sidebar-w: 244px;
+      --brand-green: #6E9B5C;
+      --brand-green-d: var(--accent);
+      --brand-green-l: var(--accent-soft);
+      --brand-black: #14160F;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    button,
+    input,
+    select,
+    textarea,
+    table,
+    th,
+    td {
+      font-family: sans-serif;
+    }
+
+    body {
+      font-family: sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ================= Sidebar ================= */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    .logo {
+      padding: 18px 16px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: var(--brand-black);
+      text-align: center;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .logo-img {
+      height: 46px;
+      width: auto;
+      max-width: 205px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .logo-sub {
+      font-family: sans-serif;
+      font-size: 9.5px;
+      color: #9FBFA9;
+      font-weight: 500;
+      letter-spacing: .12em;
+      margin-top: 9px;
+      text-transform: uppercase;
+    }
+
+    nav {
+      padding: 14px 10px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-section {
+      font-family: sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--ink-3);
+      padding: 14px 10px 6px;
+    }
+
+    .nav-section:first-child {
+      padding-top: 2px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin: 1px 0;
+      color: var(--ink-2);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: background .12s, color .12s;
+      position: relative;
+    }
+
+    .nav-link:hover {
+      background: #F1F0EA;
+      color: var(--ink);
+    }
+
+    .nav-link.active {
+      background: var(--accent-soft);
+      color: var(--accent-d);
+      font-weight: 600;
+    }
+
+    .nav-link.active::before {
+      content: '';
+      position: absolute;
+      left: -10px;
+      top: 8px;
+      bottom: 8px;
+      width: 3px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    .nav-link .icon {
+      font-size: 15px;
+      width: 18px;
+      text-align: center;
+      opacity: .85;
+    }
+
+    .user-section {
+      padding: 14px 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .user-info {
+      padding: 6px 10px;
+      margin-bottom: 6px;
+    }
+
+    .user-name {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink);
+      word-break: break-word;
+    }
+
+    .user-role {
+      font-family: sans-serif;
+      font-size: 9.5px;
+      color: var(--ink-3);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-top: 2px;
+    }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      color: var(--ink-2);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all .12s;
+      width: 100%;
+    }
+
+    .logout-btn:hover {
+      background: #F1F0EA;
+      color: var(--ink);
+    }
+
+    .logout-btn .icon {
+      font-size: 14px;
+    }
+
+    /* ================= Shell / Topbar ================= */
+    .main {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+      padding: 10px 32px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .topbar-brand-mark {
+      width: 4px;
+      height: 30px;
+      border-radius: 4px;
+      background: var(--accent);
+    }
+
+    .topbar-brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: .01em;
+    }
+
+    .topbar-brand-sub {
+      margin-top: 1px;
+      font-size: 10px;
+      color: var(--ink-3);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .topbar-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink-2);
+      background: var(--bg);
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 2px;
+    }
+
+    .topbar-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--low);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .topbar-icon {
+      position: relative;
+      color: var(--ink-2);
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .topbar-icon .dot {
+      position: absolute;
+      top: -3px;
+      right: -4px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--critical);
+      border: 1.5px solid var(--surface);
+    }
+
+    .topbar-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent-d);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: sans-serif;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+
+    .topbar-avatar:hover,
+    .topbar-avatar[aria-expanded="true"] {
+      border-color: var(--line-strong);
+    }
+
+    .topbar-menu-wrap {
+      position: relative;
+    }
+
+    .topbar-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      width: 210px;
+      padding: 8px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 14px 35px rgba(0, 0, 0, .12);
+      display: none;
+      z-index: 300;
+    }
+
+    .topbar-menu.open {
+      display: block;
+    }
+
+    .topbar-menu-head {
+      padding: 8px 10px 10px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 5px;
+    }
+
+    .topbar-menu-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .topbar-menu-role {
+      font-size: 10px;
+      color: var(--ink-3);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-top: 2px;
+    }
+
+    .topbar-menu a,
+    .topbar-menu button {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      padding: 9px 10px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink-2);
+      text-decoration: none;
+      font: 500 13px sans-serif;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .topbar-menu a:hover,
+    .topbar-menu button:hover {
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .theme-row {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      padding: 5px !important;
+    }
+
+    .theme-row button {
+      justify-content: center;
+    }
+
+    .theme-row button.active {
+      background: var(--accent-soft);
+      color: var(--accent-d);
+      font-weight: 700;
+    }
+
+
+    .content {
+      padding: 30px 32px 48px;
+      max-width: 1280px;
+    }
+
+    .flash {
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .flash-success {
+      background: var(--low-soft);
+      color: var(--low);
+      border: 1px solid var(--line);
+    }
+
+    .flash-error {
+      background: var(--critical-soft);
+      color: var(--critical);
+      border: 1px solid var(--line);
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 22px;
+    }
+
+    .page-title {
+      font-family: sans-serif;
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .page-sub {
+      font-size: 13px;
+      color: var(--ink-2);
+      margin-top: 4px;
+    }
+
+    /* ================= Shared components (reskinned, kept for other pages) ================= */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .stat-label {
+      font-family: sans-serif;
+      font-size: 10.5px;
+      color: var(--ink-3);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: sans-serif;
+      font-size: 27px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 15px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: all .13s;
+      font-family: sans-serif;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-d);
+    }
+
+    .btn-ghost {
+      background: var(--surface);
+      border: 1px solid var(--line-strong);
+      color: var(--ink-2);
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .btn-success {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: var(--accent-d);
+    }
+
+    .btn-danger {
+      background: var(--critical);
+      color: white;
+    }
+
+    .btn-sm {
+      padding: 5px 11px;
+      font-size: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      font-family: sans-serif;
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--ink-3);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: #FAFAF6;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 5px;
+      font-weight: 600;
+    }
+
+    .badge::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .badge-green {
+      background: var(--low-soft);
+      color: var(--low);
+    }
+
+    .badge-amber {
+      background: var(--medium-soft);
+      color: var(--medium);
+    }
+
+    .badge-red {
+      background: var(--critical-soft);
+      color: var(--critical);
+    }
+
+    .badge-blue {
+      background: var(--blue-l);
+      color: var(--blue);
+    }
+
+    .badge-gray {
+      background: var(--bg);
+      color: var(--ink-3);
+    }
+
+    .form-row {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .form-row.cols-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .form-row.cols-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-family: sans-serif;
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--ink-3);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--ink);
+      background: var(--surface);
+      width: 100%;
+      font-family: sans-serif;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .wizard {
+      display: flex;
+      margin-bottom: 24px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .wizard-step {
+      flex: 1;
+      padding: 14px 8px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--ink-3);
+      border-right: 1px solid var(--line);
+    }
+
+    .wizard-step:last-child {
+      border-right: none;
+    }
+
+    .wizard-step .step-num {
+      font-family: sans-serif;
+      font-size: 19px;
+      font-weight: 500;
+      display: block;
+    }
+
+    .wizard-step.active {
+      background: var(--accent-soft);
+      color: var(--accent-d);
+      font-weight: 600;
+    }
+
+    .wizard-step.done {
+      background: var(--low-soft);
+      color: var(--low);
+    }
+
+    .section-div {
+      font-family: sans-serif;
+      font-size: 10.5px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--ink-3);
+      padding: 12px 0 6px;
+      border-top: 1px solid var(--line);
+      margin-top: 8px;
+    }
+
+    .audit-banner {
+      background: var(--medium-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--medium);
+    }
+
+    .locked-banner {
+      background: var(--critical-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--critical);
+    }
+
+    .asset-list {
+      width: 220px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .asset-item {
+      display: block;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      border-radius: 7px;
+      color: var(--ink-2);
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+
+    .asset-item:hover {
+      background: var(--bg);
+    }
+
+    .asset-item.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent-d);
+    }
+
+    .asset-dot {
+      display: inline-block;
+      margin-right: 8px;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    .audit-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .field-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .field-grid.cols-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .toggle-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .toggle-group label {
+      flex: 1;
+      text-align: center;
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .toggle-group input {
+      display: none;
+    }
+
+    .btn-pass {
+      border-color: var(--low);
+      color: var(--low);
+    }
+
+    .btn-fail {
+      border-color: var(--critical);
+      color: var(--critical);
+    }
+
+    .btn-na {
+      border-color: var(--ink-3);
+      color: var(--ink-3);
+    }
+    /* OFI uses an amber state so it is visibly distinct from NC and NA. */
+    .btn-ofi {
+      border-color: #B7791F;
+      color: #8A5700;
+    }
+
+    .btn-pass.selected {
+      background: var(--low-soft);
+    }
+
+    .btn-fail.selected {
+      background: var(--critical-soft);
+    }
+
+    .btn-na.selected {
+      background: var(--bg);
+    }
+    .btn-ofi.selected {
+      background: #FEF3C7;
+      border-color: #B7791F;
+      color: #78350F;
+      box-shadow: inset 0 0 0 1px #B7791F;
+    }
+
+
+    .status-abbr-full {
+      display: none;
+    }
+
+    .q-toggle .btn {
+      min-width: 52px;
+      justify-content: center;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+
+    .q-toggle .btn:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: calc(100% + 7px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--ink);
+      color: #fff;
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 10px;
+      white-space: nowrap;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .q-toggle .btn { position: relative; }
+
+    .photo-preview {
+      max-width: 120px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+
+    .hidden-file-input {
+      display: none;
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .search-bar input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      font-family: sans-serif;
+    }
+
+    @media(max-width: 1024px) {
+      .main {
+        margin-left: 0;
+      }
+
+      .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+      }
+
+      .content {
+        padding: 18px;
+      }
+
+      .topbar {
+        padding: 12px 18px;
+      }
+    }
+
+    /* ================= Mobile audit mode ================= */
+    .mobile-only-link {
+      display: none;
+    }
+
+    .mobile-bottom-nav {
+      display: none;
+    }
+
+    .m-sheet-overlay,
+    .m-sheet {
+      display: none;
+    }
+
+    @media (max-width: 700px) {
+      body {
+        font-size: 15px;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .main {
+        margin-left: 0;
+        min-height: 100vh;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 90;
+        padding: 10px 14px;
+        background: rgba(255, 255, 255, .96);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .topbar-right {
+        margin-left: auto;
+      }
+
+      .content {
+        padding: 14px 12px calc(84px + env(safe-area-inset-bottom));
+        max-width: none;
+      }
+
+      .page-header {
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      .page-title {
+        font-size: 22px;
+      }
+
+      .page-sub {
+        font-size: 12px;
+      }
+
+      .page-header .btn {
+        white-space: nowrap;
+      }
+
+      .card,
+      .audit-panel,
+      .panel {
+        border-radius: 14px;
+        padding: 15px;
+      }
+
+      .form-row.cols-2,
+      .form-row.cols-3,
+      .field-grid.cols-2,
+      .field-grid.cols-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group input,
+      .form-group select,
+      .form-group textarea,
+      select,
+      input[type=text],
+      input[type=email],
+      textarea {
+        min-height: 46px;
+        font-size: 15px;
+        border-radius: 10px;
+      }
+
+      .btn {
+        min-height: 46px;
+        padding: 11px 15px;
+        border-radius: 10px;
+        font-size: 14px;
+      }
+
+      .btn-sm {
+        min-height: 40px;
+      }
+
+      .audit-banner {
+        font-size: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        overflow-wrap: anywhere;
+      }
+
+      .wizard {
+        position: sticky;
+        top: 61px;
+        z-index: 70;
+        margin: 0 -2px 14px;
+        border-radius: 10px;
+      }
+
+      .wizard-step {
+        padding: 9px 4px;
+        font-size: 10px;
+      }
+
+      .wizard-step .step-num {
+        font-size: 15px;
+      }
+
+      .mobile-only-link {
+        display: flex;
+      }
+
+      .m-sheet-overlay { display: block; }
+      .m-sheet { display: block; }
+
+      .mobile-bottom-nav {
+        position: fixed;
+        display: flex;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 100;
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+        background: rgba(255, 255, 255, .97);
+        border-top: 1px solid var(--line);
+        justify-content: space-around;
+        box-shadow: 0 -6px 20px rgba(0, 0, 0, .06);
+      }
+
+      .mobile-bottom-nav a {
+        text-decoration: none;
+        color: var(--ink-2);
+        font-size: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        min-width: 70px;
+      }
+
+      .mobile-bottom-nav a strong {
+        font-size: 19px;
+        line-height: 1;
+      }
+    }
+
+    /* ---- Observation panel / checkpoint helpers (shared by Technical + Safety audit pages) ---- */
+    .aud-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .aud-tabs a {
+      flex: 1;
+      text-align: center;
+      padding: 11px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      border: 1px solid var(--line-strong);
+      color: var(--ink-2);
+      background: var(--surface);
+    }
+
+    .aud-tabs a.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .q-progress {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 0 0 12px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .q-progress-bar {
+      flex: 1;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    .q-progress-fill {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      transition: width .2s;
+    }
+
+    .q-progress-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+
+    .q-row.is-nc {
+      background: #FFFDFC;
+    }
+
+    .nc-panel {
+      grid-column: 1 / -1;
+      width: 100%;
+      border: 1px solid var(--critical);
+      border-left-width: 4px;
+      border-radius: 10px;
+      padding: 12px;
+      background: var(--critical-soft);
+      margin-top: 4px;
+    }
+
+    .nc-panel[hidden] {
+      display: none;
+    }
+
+    .nc-view {
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nc-title {
+      font-weight: 700;
+      color: var(--critical);
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .nc-hint {
+      font-weight: 400;
+      color: var(--ink-2);
+      font-size: 12px;
+    }
+
+    .nc-panel .form-group {
+      margin-bottom: 10px;
+    }
+
+    .nc-panel input[type=text],
+    .nc-panel input[type=date],
+    .nc-panel textarea {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      font-size: 13px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .nc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .sev-group {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .sev {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      border: 2px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--ink-2);
+    }
+
+    .sev input {
+      display: none;
+    }
+
+    .sev-critical.selected {
+      background: var(--critical);
+      border-color: var(--critical);
+      color: #fff;
+    }
+
+    .sev-major.selected {
+      background: var(--high);
+      border-color: var(--high);
+      color: #fff;
+    }
+
+    .sev-minor.selected {
+      background: var(--medium);
+      border-color: var(--medium);
+      color: #fff;
+    }
+
+    @media (max-width: 700px) {
+      .nc-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .q-progress {
+        top: 56px;
+      }
+    }
+
+      {
+      % block extra_style %
+    }
+
+      {
+      % endblock %
+    }
+  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='page-styles.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-row">
+        <img src="{{ url_for('static', filename='cleanmax_logo.png') }}" alt="CleanMax" class="logo-img">
+      </div>
+      <div class="logo-sub">Audit Command Center</div>
+    </div>
+    <nav>
+      <div class="nav-section">Workspace</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
+        <span class="icon">◆</span> Overview
+      </a>
+      <a href="{{ url_for('mobile_home') }}" class="nav-link {% if request.endpoint=='mobile_home' %}active{% endif %}">
+        <span class="icon">▣</span> Mobile Audit
+      </a>
+      <a href="{{ url_for('audit_new') }}"
+        class="nav-link {% if request.endpoint in ['audit_new','audit_new_post','audit_site','audit_site_post','audit_equipment','audit_equipment_save','audit_safety','audit_safety_save','audit_civil','audit_civil_save','audit_submit','audit_submit_post'] %}active{% endif %}">
+        <span class="icon">＋</span> New Audit
+      </a>
+      <a href="{{ url_for('audits') }}" class="nav-link {% if request.endpoint=='audits' %}active{% endif %}">
+        <span class="icon">▤</span> All Audits
+      </a>
+      <a href="{{ url_for('observations_list') }}"
+        class="nav-link {% if request.endpoint in ['observations_list','observation_detail'] %}active{% endif %}">
+        <span class="icon">◉</span> Observations
+      </a>
+      <div class="nav-section">Operations</div>
+      <a href="{{ url_for('plants') }}"
+        class="nav-link {% if request.endpoint in ['plants','plants_post'] %}active{% endif %}">
+        <span class="icon">◎</span> Plants
+      </a>
+      <div class="nav-section">Insights</div>
+      <a href="{{ url_for('reports') }}" class="nav-link {% if request.endpoint=='reports' %}active{% endif %}">
+        <span class="icon">▦</span> Reports
+      </a>
+      {% if canonical_role(current_user.role) in ['hq_admin', 'site_admin'] %}
+      <div class="nav-section">Admin</div>
+      <a href="{{ url_for('users') }}"
+        class="nav-link {% if request.endpoint in ['users','users_new','users_edit','users_delete'] %}active{% endif %}">
+        <span class="icon">◎</span> Users
+      </a>
+      <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint=='settings' %}active{% endif %}">
+        <span class="icon">⚙</span> Settings
+      </a>
+      {% endif %}
+    </nav>
+    <div class="user-section">
+      <div class="user-info">
+        <div class="user-name">{{ current_user.full_name or current_user.username }}</div>
+        <div class="user-role">{{ current_user.role }}</div>
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn">
+        <span class="icon">⏻</span> Logout
+      </a>
+    </div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-brand">
+        <span class="topbar-brand-mark"></span>
+        <div>
+          <div class="topbar-brand-title">CleanMax Audit Command Center</div>
+          <div class="topbar-brand-sub">Renewable asset inspection &amp; compliance</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        {% if central_mode and is_hq_admin %}
+          {% if active_site_context %}
+            <a class="topbar-status" href="{{ url_for('hq_return') }}" title="Switch to another authorized site">{{ active_site_context.site_name }} · Change site</a>
+          {% else %}
+            <a class="topbar-status" href="{{ url_for('hq_dashboard') }}">HQ Administration</a>
+          {% endif %}
+        {% endif %}
+        <span class="topbar-status"><span class="topbar-status-dot"></span> Audit workspace ready</span>
+        <a class="topbar-icon" href="{{ url_for('observations_list') }}" aria-label="Open observations"
+          title="Observations">🔔{% if obs_notification_count is defined and obs_notification_count %}<span
+            class="dot"></span>{% else %}<span class="dot"></span>{% endif %}</a>
+        <div class="topbar-menu-wrap">
+          <button type="button" class="topbar-avatar" id="profileMenuButton" aria-label="Open account menu"
+            aria-expanded="false">{{ (current_user.full_name or current_user.username or '?')[0]|upper }}</button>
+          <div class="topbar-menu" id="profileMenu" role="menu">
+            <div class="topbar-menu-head">
+              <div class="topbar-menu-name">{{ current_user.full_name or current_user.username }}</div>
+              <div class="topbar-menu-role">{{ current_user.role }}</div>
+            </div>
+            {% if canonical_role(current_user.role) in ['hq_admin', 'site_admin'] %}
+            <a href="{{ url_for('settings') }}" role="menuitem">⚙ <span>Settings</span></a>
+            {% endif %}
+            <div class="theme-row" role="group" aria-label="Theme">
+              <button type="button" id="themeLight" data-theme="light">☀ Light</button>
+              <button type="button" id="themeDark" data-theme="dark">◐ Dark</button>
+            </div>
+            <a href="{{ url_for('logout') }}" role="menuitem">⏻ <span>Logout</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div class="flash flash-{{ 'success' if category == 'success' else 'error' }}">
+        {{ '✓' if category == 'success' else '✕' }} {{ message }}
+      </div>
+      {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+  <div class="mobile-bottom-nav">
+    <a href="{{ url_for('dashboard') }}"><strong>⌂</strong>Home</a>
+    <a href="{{ url_for('audits') }}"><strong>▤</strong>Audits</a>
+    <a href="{{ url_for('audit_new') }}" class="mbn-fab"><strong>＋</strong>New</a>
+    <a href="{{ url_for('reports') }}"><strong>▦</strong>Reports</a>
+    <a href="#" class="mbn-more-trigger"
+      onclick="event.preventDefault(); document.getElementById('mMoreSheet').classList.add('open'); document.getElementById('mMoreOverlay').classList.add('open');"><strong>⋯</strong>More</a>
+  </div>
+
+  <div id="mMoreOverlay" class="m-sheet-overlay"
+    onclick="this.classList.remove('open'); document.getElementById('mMoreSheet').classList.remove('open');"></div>
+  <div id="mMoreSheet" class="m-sheet" role="dialog" aria-label="More menu">
+    <div class="m-sheet-grip"></div>
+    <div class="m-sheet-title">Menu</div>
+    <a class="m-sheet-link" href="{{ url_for('dashboard') }}"><span class="m-ic">◆</span> Overview</a>
+    <a class="m-sheet-link" href="{{ url_for('observations_list') }}"><span class="m-ic">◉</span> Observations</a>
+    <a class="m-sheet-link" href="{{ url_for('plants') }}"><span class="m-ic">⚡</span> Plants</a>
+    <a class="m-sheet-link" href="{{ url_for('reports') }}"><span class="m-ic">▦</span> Reports</a>
+    <a class="m-sheet-link" href="{{ url_for('mobile_home') }}"><span class="m-ic">▤</span> Mobile Home</a>
+    {% if canonical_role(current_user.role) in ['hq_admin', 'site_admin'] %}
+    <div class="m-sheet-section">Admin</div>
+    <a class="m-sheet-link" href="{{ url_for('users') }}"><span class="m-ic">◎</span> Users</a>
+    <a class="m-sheet-link" href="{{ url_for('settings') }}"><span class="m-ic">⚙</span> Settings</a>
+    {% endif %}
+    <div class="m-sheet-section">Account</div>
+    <a class="m-sheet-link m-sheet-danger" href="{{ url_for('logout') }}"><span class="m-ic">⏻</span> Logout</a>
+    <button type="button" class="m-sheet-close"
+      onclick="document.getElementById('mMoreSheet').classList.remove('open'); document.getElementById('mMoreOverlay').classList.remove('open');">
+      Close
+    </button>
+  </div>
+  <script>
+    if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('{{ url_for('static', filename='sw.js') }}').catch(function () { }); }); }
+  </script>
+  <script src="{{ url_for('static', filename='mobile-enhance.js') }}"></script>
+
+<script>
+// Best-effort crash recovery for audit form fields. Server saves remain the source of truth;
+// this local snapshot protects unsaved text/select/radio changes if a tab or site crashes.
+(function(){
+  try {
+    var path=location.pathname;
+    if(!/^\/audit\/[^/]+\/(equipment|safety|civil)$/.test(path)) return;
+    var form=document.querySelector('form[enctype="multipart/form-data"]'); if(!form) return;
+    var key='solarAuditDraftRecovery:'+path;
+    function fields(){var out={};form.querySelectorAll('input:not([type=file]):not([type=hidden]),textarea,select').forEach(function(el){if(!el.name)return;if(el.type==='radio'||el.type==='checkbox'){if(el.checked)out[el.name]=el.value;}else out[el.name]=el.value;});return out;}
+    var snapshot=null; try{snapshot=JSON.parse(localStorage.getItem(key)||'null');}catch(e){}
+    if(snapshot && snapshot.savedAt && Date.now()-snapshot.savedAt<7*24*60*60*1000){form.querySelectorAll('input,textarea,select').forEach(function(el){if(!el.name||el.type==='file'||!(el.name in snapshot.values))return;var val=snapshot.values[el.name];if(el.type==='radio'||el.type==='checkbox')el.checked=String(val)===el.value;else el.value=val;});}
+    var timer=null;function save(){clearTimeout(timer);timer=setTimeout(function(){try{localStorage.setItem(key,JSON.stringify({savedAt:Date.now(),values:fields()}));}catch(e){}},250);}
+    form.addEventListener('input',save);form.addEventListener('change',save);
+    form.addEventListener('submit',function(){try{localStorage.setItem(key,JSON.stringify({savedAt:Date.now(),values:fields()}));}catch(e){}});
+  }catch(e){}
+})();
+</script>
+
+</body>
+
+<script>
+  (function () {
+    const root = document.documentElement;
+    const menu = document.getElementById('profileMenu');
+    const button = document.getElementById('profileMenuButton');
+    const light = document.getElementById('themeLight');
+    const dark = document.getElementById('themeDark');
+
+    function applyTheme(theme) {
+      root.dataset.theme = theme;
+      localStorage.setItem('solarAuditTheme', theme);
+      if (light) light.classList.toggle('active', theme === 'light');
+      if (dark) dark.classList.toggle('active', theme === 'dark');
+    }
+    const saved = localStorage.getItem('solarAuditTheme');
+    applyTheme(saved === 'dark' ? 'dark' : 'light');
+
+    if (button && menu) {
+      button.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const open = menu.classList.toggle('open');
+        button.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('click', function () {
+        menu.classList.remove('open');
+        button.setAttribute('aria-expanded', 'false');
+      });
+      menu.addEventListener('click', function (e) { e.stopPropagation(); });
+    }
+    if (light) light.addEventListener('click', () => applyTheme('light'));
+    if (dark) dark.addEventListener('click', () => applyTheme('dark'));
+  })();
+</script>
+<style>
+  html[data-theme="dark"] {
+    --ink: #F1F4EF;
+    --ink-2: #C3CBC4;
+    --ink-3: #8D9991;
+    --bg: #111512;
+    --surface: #1A1F1B;
+    --line: #303832;
+    --line-strong: #465149;
+    --accent: #5FA77F;
+    --accent-d: #8CC5A5;
+    --accent-soft: #203A2B;
+    --critical: #E06A60;
+    --critical-soft: #40211F;
+    --high: #D69A50;
+    --high-soft: #3D2B19;
+    --medium: #D2B95A;
+    --medium-soft: #3A341A;
+    --low: #75B98B;
+    --low-soft: #203A29;
+    --blue: #8FAFD4;
+    --blue-l: #202D3D;
+    --brand-black: #0C0F0C;
+  }
+
+  html[data-theme="dark"] tr:hover td,
+  html[data-theme="dark"] .nav-link:hover,
+  html[data-theme="dark"] .logout-btn:hover,
+  html[data-theme="dark"] .topbar-menu a:hover,
+  html[data-theme="dark"] .topbar-menu button:hover {
+    background: #222923;
+  }
+
+  html[data-theme="dark"] .mobile-bottom-nav {
+    background: rgba(26, 31, 27, .97);
+  }
+</style>
+
+</html>

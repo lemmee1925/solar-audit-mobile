@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}All Audits{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">All Audits</div>
+    <div class="page-sub">Browse submitted and draft audits across all plants.</div>
+  </div>
+  <a href="{{ url_for('audit_new') }}" class="btn btn-primary">New Audit</a>
+</div>
+<div class="search-bar">
+  <input type="text" id="auditSearch" placeholder="Search by audit ID, plant, auditor or status...">
+</div>
+<div class="filter-row" style="margin:10px 0 14px;">
+  <select id="plantFilter" class="form-control" style="max-width:280px;">
+    <option value="">All plants</option>
+  </select>
+</div>
+<div class="card">
+  <table id="auditsTable">
+    <thead>
+      <tr><th>Audit ID</th><th>Plant</th><th>Date</th><th>Type</th><th>Auditor</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+      {% for audit in audits %}
+      <tr>
+        <td><a href="{{ url_for('audit_submit', audit_id=audit.id) }}">{{ audit.audit_number or audit.id[:8] }}</a></td>
+        <td>{{ audit.plant_name }}</td>
+        <td>{{ audit.audit_date }}</td>
+        <td>{{ audit.audit_type }}</td>
+        <td>{{ audit.auditor_name }}</td>
+        <td><span class="badge {{ 'badge-green' if audit.status == 'submitted' else 'badge-amber' }}">{{ audit.status }}</span></td>
+        <td>
+          <a href="{{ url_for('audit_submit', audit_id=audit.id) }}" class="btn btn-sm btn-ghost">Open</a>
+          {% if canonical_role(current_user.role) in ['hq_admin', 'site_admin'] %}
+            <form method="POST" action="{{ url_for('audit_delete', audit_id=audit.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this audit?');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">No audits found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+(function(){
+ const input=document.getElementById('auditSearch'),plant=document.getElementById('plantFilter'),rows=Array.from(document.querySelectorAll('#auditsTable tbody tr'));if(!input||!plant)return;
+ const seen=new Set();rows.forEach(r=>{const c=r.children[1];if(c&&c.textContent.trim()&&!seen.has(c.textContent.trim())){seen.add(c.textContent.trim());const o=document.createElement('option');o.value=c.textContent.trim();o.textContent=c.textContent.trim();plant.appendChild(o);}});
+ function apply(){const q=input.value.toLowerCase(),pf=plant.value.toLowerCase();rows.forEach(r=>{const text=r.textContent.toLowerCase(),rp=(r.children[1]?r.children[1].textContent:'').trim().toLowerCase();r.style.display=(!q||text.includes(q))&&(!pf||rp===pf)?'':'none';});}
+ input.addEventListener('input',apply);plant.addEventListener('change',apply);
+})();
+</script>
+{% endblock %}

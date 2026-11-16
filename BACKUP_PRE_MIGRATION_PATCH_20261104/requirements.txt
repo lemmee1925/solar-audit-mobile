@@ -1,0 +1,15 @@
+flask
+flask-login
+werkzeug
+sqlalchemy
+reportlab
+pillow
+# Only needed to run import_checkpoints.py (Excel import)
+openpyxl
+
+# Only needed on the machine that builds the Windows installer, not for
+# running the app itself. Safe to leave installed in the dev venv.
+pyinstaller
+
+# Multi-threaded WSGI server for stable concurrent requests/photo uploads
+waitress

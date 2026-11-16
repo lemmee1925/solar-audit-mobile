@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}About{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">About</h1>
+    <p class="page-sub">Solar Audit Platform — offline site edition</p>
+  </div>
+</div>
+
+<div class="card">
+  <table>
+    <tbody>
+      <tr><td><strong>Application Version</strong></td><td>{{ app_version }}</td></tr>
+      <tr><td><strong>Export Schema Version</strong></td><td>{{ schema_version }}</td></tr>
+      <tr><td><strong>Site ID</strong></td><td>{{ site.site_id }}</td></tr>
+      <tr><td><strong>Site Name</strong></td><td>{{ site.site_name }}</td></tr>
+      <tr><td><strong>Mode</strong></td><td>Offline (local SQLite, no internet required)</td></tr>
+    </tbody>
+  </table>
+  <p class="page-sub" style="margin-top:16px;">
+    This version number is included in exported JSON packages and generated PDF reports so the
+    central office can identify which software version produced any given audit.
+  </p>
+</div>
+{% endblock %}

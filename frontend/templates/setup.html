@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Setup — SolarAudit Pro</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: sans-serif;
+  background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%);
+  color: #1F2937;
+  font-size: 14px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+:root {
+  --brand-green: #7CB859;
+  --brand-green-d: #5C9540;
+  --brand-black: #1A1A1A;
+  --border: #E5E7EB;
+  --red-l: #FEE2E2;
+  --green-l: #D1FAE5;
+}
+.setup-container { width: 100%; max-width: 460px; padding: 20px; }
+.setup-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 40px 32px;
+}
+.logo-section { text-align: center; margin-bottom: 24px; }
+.logo-img { height: 44px; width: auto; margin-bottom: 12px; }
+.logo-title { font-size: 22px; font-weight: 700; color: var(--brand-black); margin-bottom: 4px; }
+.logo-subtitle { font-size: 11px; color: var(--brand-green); font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+.section-label {
+  font-size: 12px; font-weight: 700; color: #6B7280; text-transform: uppercase;
+  letter-spacing: .04em; margin: 20px 0 10px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.section-label:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.form-group label { font-size: 11px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: .04em; }
+.form-group input {
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; color: #1F2937; background: white; width: 100%;
+}
+.form-group input:focus { outline: none; border-color: var(--brand-green); box-shadow: 0 0 0 3px rgba(124,184,89,.15); }
+.hint { font-size: 12px; color: #9CA3AF; margin-top: 2px; }
+.alert {
+  padding: 10px 14px; border-radius: 8px; font-size: 13px; display: flex;
+  align-items: center; gap: 8px; margin-bottom: 16px;
+}
+.alert-error { border: 1px solid #FECACA; background: var(--red-l); color: #991B1B; }
+.alert-success { border: 1px solid #A7F3D0; background: var(--green-l); color: #065F46; }
+.submit-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px 16px; width: 100%; border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: none; background: var(--brand-green); color: white; margin-top: 8px;
+}
+.submit-btn:hover { background: var(--brand-green-d); }
+.locked-note {
+  font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 18px; line-height: 1.5;
+}
+.site-chip {
+  display: inline-block; background: #F3F4F6; border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px; font-family: sans-serif; font-size: 13px; margin-bottom: 8px;
+}
+</style>
+</head>
+<body>
+<div class="setup-container">
+  <div class="setup-card">
+    <div class="logo-section">
+      <img src="{{ url_for('static', filename='cleanmax_logo.png') }}" alt="CleanMax" class="logo-img">
+      <div class="logo-title">Site Setup</div>
+      <div class="logo-subtitle">One-time installation configuration</div>
+    </div>
+
+    {% with messages = get_flashed_messages(category_filter=['error']) %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-error"><span>✕</span><span>{{ message }}</span></div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% with messages = get_flashed_messages(category_filter=['success']) %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-success"><span>✓</span><span>{{ message }}</span></div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('setup') }}">
+      {% if site is none %}
+        <div class="section-label">Site identity</div>
+        <div class="form-group">
+          <label for="site_id">Site ID</label>
+          <input type="text" id="site_id" name="site_id" placeholder="e.g. MH001" maxlength="20"
+                 pattern="[A-Za-z0-9]{2,20}" required autofocus>
+          <div class="hint">Letters/numbers only, e.g. MH001. This cannot be changed later without
+            reinstalling — it permanently identifies this laptop's data.</div>
+        </div>
+        <div class="form-group">
+          <label for="site_name">Site Name</label>
+          <input type="text" id="site_name" name="site_name" placeholder="e.g. ABC Solar Plant" required>
+        </div>
+      {% else %}
+        <div class="section-label">Site identity</div>
+        <div class="site-chip">{{ site.site_id }} — {{ site.site_name }}</div>
+      {% endif %}
+
+      <div class="section-label">First administrator account</div>
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="admin" required>
+      </div>
+      <div class="form-group">
+        <label for="full_name">Full Name</label>
+        <input type="text" id="full_name" name="full_name" placeholder="Site Administrator" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="At least 6 characters" required>
+      </div>
+
+      <button type="submit" class="submit-btn"><span>Complete Setup</span></button>
+    </form>
+
+    <div class="locked-note">
+      Once this site is configured, the site ID is locked — an ordinary user cannot switch
+      installations to another site's data from inside the app.
+    </div>
+  </div>
+</div>
+</body>
+</html>

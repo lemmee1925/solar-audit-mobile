@@ -1,0 +1,49 @@
+﻿from app import app
+
+
+def test_token_endpoint_disabled_returns_503(monkeypatch):
+    monkeypatch.delenv("MOBILE_API_ENABLED", raising=False)
+    monkeypatch.delenv("MOBILE_API_SIGNING_SECRET", raising=False)
+
+    response = app.test_client().post(
+        "/api/mobile/v1/auth/token",
+        json={"username": "test-user", "password": "test-password"},
+    )
+
+    assert response.status_code == 503
+    assert response.get_json()["ok"] is False
+
+
+def test_bootstrap_disabled_returns_503(monkeypatch):
+    monkeypatch.delenv("MOBILE_API_ENABLED", raising=False)
+
+    response = app.test_client().get("/api/mobile/v1/bootstrap")
+
+    assert response.status_code == 503
+    assert response.get_json()["ok"] is False
+
+
+def test_enabled_api_without_signing_secret_returns_503(monkeypatch):
+    monkeypatch.setenv("MOBILE_API_ENABLED", "1")
+    monkeypatch.delenv("MOBILE_API_SIGNING_SECRET", raising=False)
+
+    response = app.test_client().post(
+        "/api/mobile/v1/auth/token",
+        json={"username": "test-user", "password": "test-password"},
+    )
+
+    assert response.status_code == 503
+    assert response.get_json()["ok"] is False
+
+
+def test_protected_endpoint_without_bearer_token_returns_401(monkeypatch):
+    monkeypatch.setenv("MOBILE_API_ENABLED", "1")
+    monkeypatch.setenv(
+        "MOBILE_API_SIGNING_SECRET",
+        "isolated-test-signing-secret-at-least-32-chars",
+    )
+
+    response = app.test_client().get("/api/mobile/v1/bootstrap")
+
+    assert response.status_code == 401
+    assert response.get_json()["ok"] is False

@@ -1,0 +1,143 @@
+/* ============================================================================
+   mobile.css — Mobile UI/UX enhancement layer for the Solar Audit Platform
+   Applies ONLY at <=700px. Desktop is untouched.
+   ============================================================================ */
+
+@media (max-width: 700px) {
+
+  /* 1. Base readability */
+  body { font-size: 15.5px; }
+  .content { padding: 14px 14px calc(96px + env(safe-area-inset-bottom)) !important; }
+  .page-title { font-size: 21px !important; line-height: 1.2; }
+  .page-sub   { font-size: 12.5px !important; color: var(--ink-2) !important; }
+  .form-group label {
+    font-size: 12px !important; letter-spacing: .04em !important; color: var(--ink-2) !important;
+  }
+
+  /* 2. Touch-friendly inputs */
+  .form-group input, .form-group select, .form-group textarea,
+  select, input[type=text], input[type=email], input[type=number],
+  input[type=date], input[type=time], input[type=password], textarea {
+    min-height: 50px !important; font-size: 16px !important;
+    border-radius: 12px !important; padding: 12px 14px !important;
+  }
+  textarea { min-height: 92px !important; }
+  input[type=date], input[type=time] { -webkit-appearance: none; appearance: none; }
+
+  /* 3. Buttons */
+  .btn { min-height: 50px !important; border-radius: 12px !important; font-size: 15px !important; font-weight: 600; }
+  .page-header { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+  .page-header > div:first-child { min-width: 0; }
+  .page-header .btn { width: 100%; justify-content: center; }
+  form [style*="justify-content: flex-end"],
+  form [style*="justify-content: space-between"] {
+    flex-direction: column-reverse !important; gap: 10px !important;
+  }
+  form [style*="justify-content: flex-end"] .btn,
+  form [style*="justify-content: space-between"] .btn { width: 100%; justify-content: center; }
+
+  /* 4. Cards */
+  .card, .audit-panel, .panel { border-radius: 16px !important; padding: 16px !important; }
+
+  /* 5. Wizard */
+  .wizard { position: sticky; top: 60px; z-index: 70; border-radius: 14px !important;
+    overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.05); }
+  .wizard-step { padding: 11px 4px !important; font-size: 10.5px !important; position: relative; }
+  .wizard-step .step-num { font-size: 17px !important; }
+  .wizard-step.active { box-shadow: inset 0 -3px 0 var(--accent); }
+  .wizard-step.done::after { content: '✓'; position: absolute; top: 6px; right: 8px;
+    font-size: 11px; color: var(--low); font-weight: 700; }
+
+  /* 6. Collapsible form sections */
+  .m-accordion { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: var(--surface); }
+  .m-accordion-head { display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 16px; cursor: pointer; user-select: none; font-weight: 600; font-size: 14.5px; color: var(--ink); background: var(--surface); }
+  .m-accordion-head .m-count { font-family: sans-serif; font-size: 11px; color: var(--ink-3);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 20px; padding: 2px 9px; margin-left: auto; margin-right: 10px; }
+  .m-accordion-head .m-chev { transition: transform .2s; color: var(--ink-3); font-size: 13px; }
+  .m-accordion.open .m-accordion-head .m-chev { transform: rotate(90deg); }
+  .m-accordion-body { display: none; padding: 4px 14px 14px; }
+  .m-accordion.open .m-accordion-body { display: block; }
+
+  /* 7. Universal sticky Save bar */
+  .m-sticky-save { position: fixed; left: 0; right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 95; padding: 10px 12px;
+    background: rgba(245,244,239,.94); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line); display: flex; gap: 10px; }
+  .m-sticky-save .btn { flex: 1; }
+  body.m-has-sticky .content { padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important; }
+
+  /* 8. Tables -> stacked cards */
+  table.m-carded thead { display: none; }
+  table.m-carded, table.m-carded tbody, table.m-carded tr, table.m-carded td { display: block; width: 100%; }
+  table.m-carded tr { border: 1px solid var(--line); border-radius: 14px; margin-bottom: 12px;
+    padding: 6px 4px; background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+  table.m-carded tr:hover td { background: transparent; }
+  table.m-carded td { border: none !important; padding: 8px 14px !important;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+  table.m-carded td::before { content: attr(data-label); font-family: sans-serif;
+    font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; flex: 0 0 auto; }
+  table.m-carded td:first-child { font-weight: 700; font-size: 15px; }
+  table.m-carded td.m-actions { flex-direction: column; align-items: stretch; }
+  table.m-carded td.m-actions::before { margin-bottom: 6px; }
+  table.m-carded td.m-actions .btn, table.m-carded td.m-actions form { width: 100%; }
+  table.m-carded td.m-actions form .btn { width: 100%; margin: 4px 0; }
+
+  /* 9. Equipment page custom-add form */
+  #addEquipmentForm > div { grid-template-columns: 1fr !important; }
+  #addEquipmentForm .btn { width: 100%; }
+
+  /* 10. Floating Action Button */
+  .m-fab { position: fixed; right: 16px; bottom: calc(78px + env(safe-area-inset-bottom));
+    z-index: 96; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 26px; text-decoration: none;
+    box-shadow: 0 8px 20px rgba(30,92,66,.35); }
+  .m-fab:active { transform: scale(.94); }
+
+  /* 11. Bottom nav active state */
+  .mobile-bottom-nav a.m-active { color: var(--accent-d) !important; font-weight: 700; }
+  .mobile-bottom-nav a.m-active strong { color: var(--accent) !important; }
+
+  /* 12. Flash + banners */
+  .flash { font-size: 13.5px !important; padding: 13px 15px !important; border-radius: 12px !important; }
+  .audit-banner, .locked-banner { font-size: 12.5px !important; overflow-wrap: anywhere; }
+  [style*="grid-template-columns: repeat(3"], [style*="grid-template-columns: repeat(4"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* ===== Bottom nav: 5-slot layout + centre FAB slot ===== */
+  .mobile-bottom-nav a { min-width: 58px; }
+  .mobile-bottom-nav a.mbn-fab strong { display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; margin-top: -18px; border-radius: 50%; background: var(--accent);
+    color: #fff; font-size: 22px; box-shadow: 0 6px 16px rgba(30,92,66,.35); }
+  .mobile-bottom-nav a.mbn-fab { color: var(--accent-d); font-weight: 700; }
+
+  /* ===== "More" slide-up sheet ===== */
+  .m-sheet-overlay { position: fixed; inset: 0; z-index: 110; background: rgba(20,22,15,.45);
+    opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+  .m-sheet-overlay.open { opacity: 1; pointer-events: auto; }
+  .m-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 120; background: var(--surface);
+    border-radius: 20px 20px 0 0; padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+    box-shadow: 0 -12px 40px rgba(0,0,0,.22); transform: translateY(105%);
+    transition: transform .26s cubic-bezier(.2,.8,.2,1); max-height: 82vh; overflow-y: auto; }
+  .m-sheet.open { transform: translateY(0); }
+  .m-sheet-grip { width: 40px; height: 4px; border-radius: 3px; background: var(--line-strong); margin: 6px auto 12px; }
+  .m-sheet-title { font-family: sans-serif; font-size: 18px; font-weight: 500; color: var(--ink); margin-bottom: 8px; }
+  .m-sheet-section { font-family: sans-serif; font-size: 10px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--ink-3); padding: 16px 4px 6px; }
+  .m-sheet-link { display: flex; align-items: center; gap: 14px; padding: 15px 12px; border-radius: 12px;
+    color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 500; border: 1px solid transparent; }
+  .m-sheet-link:active { background: var(--bg); }
+  .m-sheet-link .m-ic { width: 26px; text-align: center; font-size: 17px; color: var(--accent); opacity: .9; }
+  .m-sheet-danger { color: var(--critical); }
+  .m-sheet-danger .m-ic { color: var(--critical); }
+  .m-sheet-close { width: 100%; margin-top: 14px; min-height: 50px; border: 1px solid var(--line-strong);
+    border-radius: 12px; background: var(--surface); color: var(--ink-2); font-size: 15px; font-weight: 600;
+    font-family: sans-serif; cursor: pointer; }
+}
+
+@media (max-width: 420px) {
+  [style*="grid-template-columns: repeat(3"], [style*="grid-template-columns: repeat(4"] {
+    grid-template-columns: 1fr !important;
+  }
+}

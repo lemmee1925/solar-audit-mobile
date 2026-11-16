@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Plants{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Plants</div>
+    <div class="page-sub">Manage your solar plant portfolio and asset counts.</div>
+  </div>
+  {% if is_admin %}
+  <button class="btn btn-primary" onclick="document.getElementById('plantForm').style.display='block'; this.style.display='none';">Add Plant</button>
+  {% endif %}
+</div>
+{% if is_admin %}
+<div id="plantForm" class="card" style="display: none; margin-bottom: 20px;">
+  <form action="{{ url_for('plants_post') }}" method="post">
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="name">Plant Name</label>
+        <input type="text" id="name" name="name" required>
+      </div>
+      <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="capacity_mw">Capacity (MW)</label>
+        <input type="number" step="0.01" id="capacity_mw" name="capacity_mw">
+      </div>
+      <div class="form-group" style="align-self: end;">
+        <button type="submit" class="btn btn-success">Save Plant</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endif %}
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Location</th><th>Capacity</th><th>Assets</th><th>Audits</th>{% if is_admin %}<th>Actions</th>{% endif %}</tr>
+    </thead>
+    <tbody>
+      {% for plant in plants %}
+      <tr>
+        <td>{{ plant.name }}</td>
+        <td>{{ plant.location or 'N/A' }}</td>
+        <td>{{ plant.capacity_mw or 'N/A' }}</td>
+        <td>{{ plant.asset_count }}</td>
+        <td>{{ plant.audit_count }}</td>
+        {% if is_admin %}
+        <td>
+          <a href="{{ url_for('plant_specs', plant_id=plant.id) }}" class="btn btn-ghost btn-sm">Edit Specs</a>
+          <form action="{{ url_for('plant_delete', plant_id=plant.id) }}" method="post" style="display: inline;"
+                onsubmit="return confirm('Delete {{ plant.name }}? This cannot be undone.');">
+            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+          </form>
+          <form action="{{ url_for('plant_force_delete', plant_id=plant.id) }}" method="post" style="display: inline;"
+                onsubmit="return solarAuditConfirmForceDelete(this, {{ plant.name|tojson }});">
+            <input type="hidden" name="confirm_name" class="force-delete-confirm-input">
+            <button type="submit" class="btn btn-danger btn-sm" style="background:#7f1d1d;" title="Deletes the plant AND all its audits/photos, even submitted ones">Force Delete</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ 6 if is_admin else 5 }}">No plants created yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+function solarAuditConfirmForceDelete(form, plantName) {
+  var typed = prompt(
+    'This will PERMANENTLY delete "' + plantName + '" and ALL of its audits, ' +
+    'photos, and reports — including already-submitted audits. This cannot be undone.\n\n' +
+    'Type the plant name exactly to confirm:'
+  );
+  if (typed === null) return false; // cancelled
+  form.querySelector('.force-delete-confirm-input').value = typed;
+  return true; // let the server verify the exact match and report a clear error if it doesn't
+}
+</script>
+{% endblock %}

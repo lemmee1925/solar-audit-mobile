@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Settings</h1>
+    <p class="page-sub">Site identity, backups, and application info</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">This Installation</h2>
+  </div>
+  <table>
+    <tbody>
+      <tr><td><strong>Site ID</strong></td><td>{{ site.site_id }}</td></tr>
+      <tr><td><strong>Site Name</strong></td><td>{{ site.site_name }}</td></tr>
+      <tr><td><strong>Application Version</strong></td><td>{{ app_version }}</td></tr>
+    </tbody>
+  </table>
+  <p class="page-sub" style="margin-top:12px;">
+    The site ID cannot be changed from this page. Reassigning a site requires an
+    administrator to remove <code>config/site_config.json</code> on disk and re-run setup —
+    an ordinary user has no way to switch this install to another site's data.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Equipment Checklist</h2>
+  </div>
+  <table>
+    <tbody>
+      <tr><td><strong>Asset Types</strong></td><td>{{ asset_type_count }}</td></tr>
+      <tr><td><strong>Questions</strong></td><td>{{ question_count }}</td></tr>
+    </tbody>
+  </table>
+  {% if asset_type_count == 0 %}
+    <p class="page-sub" style="margin-top:12px; color:#991B1B;">
+      No checklist data found — the equipment dropdown when starting an audit will be empty
+      until this is seeded. Click below to fix it.
+    </p>
+  {% else %}
+    <p class="page-sub" style="margin-top:12px;">
+      This is seeded automatically on first launch. Use this only if the equipment dropdown
+      appears empty when adding equipment to an audit.
+    </p>
+  {% endif %}
+  <form method="POST" action="{{ url_for('settings_reseed_checklist') }}" style="margin-top:12px;">
+    <button type="submit" class="btn btn-ghost">🔄 Reseed Checklist</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Backup</h2>
+  </div>
+  <p class="page-sub">
+    Creates a ZIP containing the local database, photos, and site configuration.
+    Existing backups are never overwritten.
+  </p>
+  <form method="POST" action="{{ url_for('settings_backup') }}" style="margin-top:12px;">
+    <button type="submit" class="btn btn-primary">📦 Create Backup Now</button>
+  </form>
+
+  {% if backups %}
+    <table style="margin-top:16px;">
+      <thead><tr><th>Backup File</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for b in backups %}
+          <tr>
+            <td>{{ b }}</td>
+            <td><a href="{{ url_for('settings_backup_download', filename=b) }}" class="btn btn-ghost btn-sm">⬇ Download</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="page-sub" style="margin-top:12px;">No backups created yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Restore</h2>
+  </div>
+  <p class="page-sub">
+    Restoring replaces this install's current database and photos with the contents of the
+    backup ZIP. A safety backup of the current data is taken automatically first. A backup
+    can only be restored onto the site it belongs to — a mismatched site ID is refused.
+  </p>
+  <form method="POST" action="{{ url_for('settings_restore') }}" enctype="multipart/form-data" style="margin-top:12px;"
+        onsubmit="return confirm('This will replace all current data on this installation with the contents of the backup. Continue?');">
+    <div class="form-group" style="margin-bottom:12px;">
+      <input type="file" name="backup_file" accept=".zip" required>
+    </div>
+    <button type="submit" class="btn btn-danger">♻ Restore From Backup</button>
+  </form>
+</div>
+
+{% endblock %}

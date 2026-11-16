@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — SolarAudit Pro</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: sans-serif;
+  background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%);
+  color: #1F2937;
+  font-size: 14px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+:root {
+  --amber: #4A4B4D;
+  --amber-d: #333335;
+  --amber-dd: #26272A;
+  --amber-l: #EDEEEE;
+  --green: #10B981;
+  --green-l: #D1FAE5;
+  --red: #EF4444;
+  --red-l: #FEE2E2;
+  --border: #E5E7EB;
+  --brand-green: #7CB859;
+  --brand-green-d: #5C9540;
+  --brand-green-l: #EAF4E3;
+  --brand-black: #1A1A1A;
+}
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+}
+.login-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 40px 32px;
+}
+.logo-section {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.logo-img {
+  height: 48px;
+  width: auto;
+  margin-bottom: 16px;
+  /* display: block; */
+}
+.logo-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--brand-black);
+  margin-bottom: 4px;
+}
+.logo-subtitle {
+  font-size: 11px;
+  color: var(--brand-green);
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.form-group input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1F2937;
+  background: white;
+  width: 100%;
+  transition: all 0.15s;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px rgba(124, 184, 89, 0.15);
+}
+.form-group input::placeholder {
+  color: #D1D5DB;
+}
+.error-messages {
+  margin-bottom: 18px;
+}
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #FECACA;
+  background: var(--red-l);
+  color: #991B1B;
+}
+.alert-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  width: 100%;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: all 0.15s;
+  background: var(--brand-green);
+  color: white;
+  margin-top: 8px;
+}
+.submit-btn:hover {
+  background: var(--brand-green-d);
+  box-shadow: 0 2px 8px rgba(124, 184, 89, 0.3);
+}
+.submit-btn:active {
+  transform: scale(0.98);
+}
+@media (max-width: 480px) {
+  .login-card {
+    padding: 32px 20px;
+  }
+  .logo-img {
+    height: 40px;
+  }
+  .logo-title {
+    font-size: 20px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="login-container">
+  <div class="login-card">
+    <div class="logo-section">
+      <img src="{{ url_for('static', filename='cleanmax_logo.png') }}" alt="CleanMax" class="logo-img">
+      <div class="logo-title">SolarAudit Pro</div>
+      <div class="logo-subtitle">Solar Audit Platform</div>
+    </div>
+    
+    {% with messages = get_flashed_messages(category_filter=['error']) %}
+      {% if messages %}
+        <div class="error-messages">
+          {% for message in messages %}
+            <div class="alert">
+              <span class="alert-icon">✕</span>
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% with messages = get_flashed_messages(category_filter=['success']) %}
+      {% if messages %}
+        <div class="error-messages">
+          {% for message in messages %}
+            <div class="alert" style="border-color:#A7F3D0;background:var(--green-l);color:#065F46;">
+              <span class="alert-icon">✓</span>
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="Enter your username" required autofocus>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+      </div>
+      
+      <button type="submit" class="submit-btn">
+        <span>Sign In</span>
+      </button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

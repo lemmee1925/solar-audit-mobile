@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Specifications — {{ plant.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Specifications — {{ plant.name }}</h1>
+    <p class="page-sub">
+      Enter this once. Every new audit created for this plant will start pre-filled with these
+      values — still editable per audit if something has actually changed on-site.
+    </p>
+  </div>
+  <a href="{{ url_for('plants') }}" class="btn btn-ghost">Back to Plants</a>
+</div>
+
+<form method="POST" action="{{ url_for('plant_specs_post', plant_id=plant.id) }}">
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Basic Info</h2></div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="name">Plant Name</label>
+        <input type="text" id="name" name="name" value="{{ plant.name }}" required>
+      </div>
+      <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location" value="{{ plant.location or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="capacity_mw">Capacity (MW)</label>
+        <input type="number" step="0.01" id="capacity_mw" name="capacity_mw" value="{{ plant.capacity_mw or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="building_name">Site / Building Name</label>
+        <input type="text" id="building_name" name="building_name" value="{{ plant.building_name or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="roof_type">Roof Type</label>
+        <input type="text" id="roof_type" name="roof_type" value="{{ plant.roof_type or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="city">City</label>
+        <input type="text" id="city" name="city" value="{{ plant.city or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="state">State</label>
+        <select id="state" name="state">
+          <option value="">Select state</option>
+          {% for state_name in ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'] %}
+          <option value="{{ state_name }}" {% if plant.state == state_name %}selected{% endif %}>{{ state_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Equipment & Capacity</h2></div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="no_of_blocks">No. of Blocks</label>
+        <input type="number" id="no_of_blocks" name="no_of_blocks" value="{{ plant.no_of_blocks or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="dc_capacity">DC Capacity</label>
+        <input type="number" step="0.01" id="dc_capacity" name="dc_capacity" value="{{ plant.dc_capacity or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="ac_capacity">AC Capacity</label>
+        <input type="number" step="0.01" id="ac_capacity" name="ac_capacity" value="{{ plant.ac_capacity or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="central_inverter_type">Central Inverter Type</label>
+        <input type="text" id="central_inverter_type" name="central_inverter_type" value="{{ plant.central_inverter_type or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="central_inverter_count">Central Inverter Count</label>
+        <input type="number" id="central_inverter_count" name="central_inverter_count" value="{{ plant.central_inverter_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="string_inverter_type">String Inverter Type</label>
+        <input type="text" id="string_inverter_type" name="string_inverter_type" value="{{ plant.string_inverter_type or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="string_inverter_count">String Inverter Count</label>
+        <input type="number" id="string_inverter_count" name="string_inverter_count" value="{{ plant.string_inverter_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="scb_count">SCB Count</label>
+        <input type="number" id="scb_count" name="scb_count" value="{{ plant.scb_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="mms_type">MMS Type</label>
+        <input type="text" id="mms_type" name="mms_type" value="{{ plant.mms_type or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="mms_count">MMS Count</label>
+        <input type="number" id="mms_count" name="mms_count" value="{{ plant.mms_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="transformer_type">Transformer Type</label>
+        <input type="text" id="transformer_type" name="transformer_type" value="{{ plant.transformer_type or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="transformer_count">Transformer Count</label>
+        <input type="number" id="transformer_count" name="transformer_count" value="{{ plant.transformer_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="clamps_connectors_count">Clamps/Connectors Count</label>
+        <input type="number" id="clamps_connectors_count" name="clamps_connectors_count" value="{{ plant.clamps_connectors_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="lt_panel_type">LT Panel Type</label>
+        <input type="text" id="lt_panel_type" name="lt_panel_type" value="{{ plant.lt_panel_type or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="lt_panel_count">LT Panel Count</label>
+        <input type="number" id="lt_panel_count" name="lt_panel_count" value="{{ plant.lt_panel_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="ht_panel_type">HT Panel Type</label>
+        <input type="text" id="ht_panel_type" name="ht_panel_type" value="{{ plant.ht_panel_type or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="ht_panel_count">HT Panel Count</label>
+        <input type="number" id="ht_panel_count" name="ht_panel_count" value="{{ plant.ht_panel_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="acdb_count">ACDB Count</label>
+        <input type="number" id="acdb_count" name="acdb_count" value="{{ plant.acdb_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="ups_db_battery_count">UPS DB / Battery Count</label>
+        <input type="number" id="ups_db_battery_count" name="ups_db_battery_count" value="{{ plant.ups_db_battery_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="lightning_protection_count">Lightning Protection Count</label>
+        <input type="number" id="lightning_protection_count" name="lightning_protection_count" value="{{ plant.lightning_protection_count or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="dc_earthing">DC Earthing</label>
+        <input type="text" id="dc_earthing" name="dc_earthing" value="{{ plant.dc_earthing or '' }}">
+      </div>
+      <div class="form-group">
+        <label for="ac_earthing">AC Earthing</label>
+        <input type="text" id="ac_earthing" name="ac_earthing" value="{{ plant.ac_earthing or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 12px;">
+    <a href="{{ url_for('plants') }}" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save Specifications</button>
+  </div>
+</form>
+{% endblock %}

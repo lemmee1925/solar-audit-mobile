@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}Civil / Infrastructure Audit{% endblock %}
+
+{% block extra_style %}
+  .aud-tabs { display:flex; gap:8px; margin-bottom:18px; }
+  .aud-tabs a { flex:1; text-align:center; padding:11px; border-radius:10px; font-weight:600;
+    font-size:13px; text-decoration:none; border:1px solid var(--line-strong); color:var(--ink-2); background:var(--surface); }
+  .aud-tabs a.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .q-section { margin-top:14px; }
+  .q-list { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); }
+  .q-row { display:grid; grid-template-columns:minmax(0, 1.18fr) 280px 155px 120px; gap:10px; align-items:center;
+    padding:8px 10px; border-bottom:1px solid var(--line); }
+  .q-list .q-row:last-child { border-bottom:none; }
+  .q-text { font-size:12.5px; color:var(--ink); line-height:1.35; }
+  .q-toggle.toggle-group { display:flex; gap:3px; }
+  .q-toggle label.btn { flex:none; padding:4px 9px; font-size:11px; border-radius:5px; min-width:30px; text-align:center; }
+  .q-remarks { padding:5px 8px !important; font-size:12px !important; }
+  .q-photos { display:flex; gap:4px; flex-wrap:wrap; align-items:center; }
+  .q-photo-thumb-wrap { position:relative; width:30px; height:30px; flex:none; }
+  .q-photo-thumb { display:block; width:30px; height:30px; border-radius:6px; overflow:hidden; border:1px solid var(--line-strong); }
+  .q-photo-thumb img { width:100%; height:100%; object-fit:cover; }
+  .q-photo-del { position:absolute; top:-6px; right:-6px; width:15px; height:15px; line-height:13px; border-radius:50%;
+    border:1px solid var(--critical); background:var(--surface); color:var(--critical); font-size:11px; cursor:pointer; padding:0; }
+  .q-photo-add { display:flex; align-items:center; justify-content:center; width:30px; height:30px; flex:none;
+    border:1px dashed var(--line-strong); border-radius:6px; cursor:pointer; font-size:15px; color:var(--ink-3); background:var(--surface); }
+  @media (max-width:700px){
+    .q-list{border:none;background:transparent;overflow:visible;}
+    .q-row{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:14px;margin-bottom:10px;
+      border:1px solid var(--line);border-radius:14px;background:var(--surface);}
+    .q-text{font-size:14px;font-weight:600;}
+    .q-toggle.toggle-group{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;}
+    .q-toggle label.btn{min-width:0;min-height:44px;padding:11px 6px;font-size:13px;border-radius:9px;}
+    .q-photo-thumb-wrap,.q-photo-thumb{width:54px;height:54px;}
+    .q-photo-add{width:54px;height:54px;border-radius:10px;font-size:24px;}
+  }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Civil / Infrastructure Audit</div>
+    <div class="page-sub">Site-level civil and infrastructure checklist — Compliant / NC / NA.</div>
+  </div>
+  <a href="{{ url_for('audit_submit', audit_id=audit.id) }}" class="btn btn-primary">Review & Submit</a>
+</div>
+<div class="audit-banner">Audit ID: {{ audit.id|string|truncate(8, True, '') }} — Plant: {{ plant.name if plant else 'Unknown' }}</div>
+
+<div class="aud-tabs">
+  <a href="{{ url_for('audit_equipment', audit_id=audit.id) }}">Technical</a>
+  <a href="{{ url_for('audit_safety', audit_id=audit.id) }}">Safety</a>
+  <a href="{{ url_for('audit_civil', audit_id=audit.id) }}" class="active">Civil / Infrastructure</a>
+</div>
+
+{% if readonly %}
+<div class="locked-banner">This audit has been submitted and is locked. Editing is disabled.</div>
+{% endif %}
+
+{% if not questions %}
+<div class="card"><p style="color:var(--ink-3);">No Civil / Infrastructure checkpoints are configured on this server yet.</p></div>
+{% else %}
+<form action="{{ url_for('audit_civil_save', audit_id=audit.id) }}" method="post" enctype="multipart/form-data">
+  {% if not readonly %}<div class="q-progress">
+    <div class="q-progress-text">0 of 0 answered</div>
+    <div class="q-progress-bar"><div class="q-progress-fill"></div></div>
+  </div>
+  {% endif %}
+  <div class="q-section">
+    <div class="q-list">
+      {% for question in questions %}
+      {% set response = responses_map[question.id|string] if question.id|string in responses_map else None %}
+      <div class="q-row {% if response and response.response_status == 'fail' %}is-nc{% elif response and response.response_status == 'ofi' %}is-ofi{% endif %}">
+        <div class="q-text">{{ question.question_text }}</div>
+        {% if readonly %}
+        <div style="font-size:12px;font-weight:700;">{{ (response.response_status if response else 'na')|resp_label }}</div>
+        <div style="font-size:12px;color:var(--ink-2);">{{ response.remarks if response and response.remarks else '—' }}</div>
+        <div class="q-photos">
+          {% set qphotos = photos_map[question.id|string] if question.id|string in photos_map else [] %}
+          {% for p in qphotos %}
+          <a href="{{ url_for('uploaded_file', filename=p.file_path) }}" target="_blank" class="q-photo-thumb"><img src="{{ url_for('uploaded_file', filename=p.file_path) }}"></a>
+          {% else %}<span style="color:var(--ink-3);">—</span>{% endfor %}
+        </div>
+        {% set obs = obs_map[question.id|string] if question.id|string in obs_map else None %}
+        {% if obs %}
+        <div class="nc-panel nc-view">
+          <div><b>Observation:</b> {{ obs.observation or '&mdash;'|safe }}</div>
+          <div>Finding severity, responsibility and target date are managed in Observations after submission.</div>
+          <div><b>Status:</b> {{ obs_display_status(obs) }} &middot; <a href="{{ url_for('observation_detail', obs_id=obs.id) }}">Open observation</a></div>
+        </div>
+        {% endif %}
+        {% else %}
+        <input type="text" class="q-remarks" name="remarks_{{ question.id }}" value="{{ response.remarks if response else '' }}" placeholder="Remarks">
+        <div class="toggle-group q-toggle">
+          <label title="Complied" class="btn btn-pass {% if response and response.response_status == 'pass' %}selected{% endif %}">
+            <input type="radio" name="response_status_{{ question.id }}" value="pass" {% if response and response.response_status == 'pass' %}checked{% endif %}> C<span class="status-abbr-full">omplied</span>
+          </label>
+          <label title="Not Complied" class="btn btn-fail {% if response and response.response_status == 'fail' %}selected{% endif %}">
+            <input type="radio" name="response_status_{{ question.id }}" value="fail" {% if response and response.response_status == 'fail' %}checked{% endif %}> NC<span class="status-abbr-full"> Not Complied</span>
+          </label>
+                          <label title="Opportunity for Improvement" class="btn btn-ofi {% if response and response.response_status == 'ofi' %}selected{% endif %}">
+                  <input type="radio" name="response_status_{{ question.id }}" value="ofi" {% if response and response.response_status == 'ofi' %}checked{% endif %}> OFI<span class="status-abbr-full"> Opportunity for Improvement</span>
+                </label>
+<label title="Not Applicable" class="btn btn-na {% if response and response.response_status not in ['pass','fail','ofi'] %}selected{% endif %}">
+            <input type="radio" name="response_status_{{ question.id }}" value="na" {% if response and response.response_status not in ['pass','fail','ofi'] %}checked{% endif %}> NA<span class="status-abbr-full"> Not Applicable</span>
+          </label>
+        </div>
+        {% set qphotos = photos_map[question.id|string] if question.id|string in photos_map else [] %}
+        <div class="q-photos" data-question-id="{{ question.id }}">
+          {% for p in qphotos %}
+          <div class="q-photo-thumb-wrap">
+            <a href="{{ url_for('uploaded_file', filename=p.file_path) }}" target="_blank" class="q-photo-thumb"><img src="{{ url_for('uploaded_file', filename=p.file_path) }}"></a>
+            <button type="button" class="q-photo-del" data-photo-id="{{ p.id }}">&times;</button>
+          </div>
+          {% endfor %}
+          <span class="photo-upload-state" aria-live="polite" style="font-size:11px;color:var(--ink-2);"></span>
+          <label class="q-photo-add" for="photo_{{ question.id }}" style="{{ 'display:none;' if qphotos|length >= 1000 else '' }}">📷</label>
+        </div>
+        <input id="photo_{{ question.id }}" class="hidden-file-input" type="file" name="photo_{{ question.id }}" accept="image/*" capture="environment">
+        <input type="hidden" name="photo_latitude_{{ question.id }}" id="photo_latitude_{{ question.id }}">
+        <input type="hidden" name="photo_longitude_{{ question.id }}" id="photo_longitude_{{ question.id }}">
+        <input type="hidden" name="photo_accuracy_{{ question.id }}" id="photo_accuracy_{{ question.id }}">
+        <input type="hidden" name="photo_captured_at_{{ question.id }}" id="photo_captured_at_{{ question.id }}">
+        <div class="nc-panel" {% if not (response and response.response_status == 'fail') %}hidden{% endif %}><div class="hint" style="padding:8px 0;">NC finding details (severity, responsible team and target date) are completed after submission in Observations.</div></div>        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% if not readonly %}
+  <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+    <button type="submit" class="btn btn-primary">💾 Save Civil / Infrastructure Audit</button>
+    <a href="{{ url_for('audit_submit', audit_id=audit.id) }}" class="btn btn-success">Review &amp; Submit Audit →</a>
+  </div>
+  {% endif %}
+</form>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.toggle-group label').forEach(function(label){
+    label.addEventListener('click', function(){
+      var c=label.parentElement; c.querySelectorAll('label').forEach(function(i){i.classList.remove('selected');});
+      label.classList.add('selected');
+    });
+  });
+
+  // Not Complied reveals the observation panel; Complied / NA hide it (never required for those)
+  document.querySelectorAll('.q-row').forEach(function(row) {
+    var panel = row.querySelector('.nc-panel');
+    if (!panel) return;
+    row.querySelectorAll('.q-toggle label').forEach(function(label) {
+      label.addEventListener('click', function() {
+        setTimeout(function() {
+          var c = row.querySelector('input[name^="response_status_"]:checked');
+          panel.hidden = !(c && c.value === 'fail');
+          row.classList.toggle('is-nc', !!(c && c.value === 'fail'));
+          updateProgress();
+        }, 0);
+      });
+    });
+    row.querySelectorAll('.sev').forEach(function(l) {
+      l.addEventListener('click', function() {
+        setTimeout(function() { row.querySelectorAll('.sev').forEach(function(x) { x.classList.toggle('selected', x.querySelector('input').checked); }); }, 0);
+      });
+    });
+  });
+  function updateProgress() {
+    var rows = document.querySelectorAll('.q-row'), n = 0;
+    rows.forEach(function(r) { if (r.querySelector('input[name^="response_status_"]:checked')) n++; });
+    var t = document.querySelector('.q-progress-text');
+    if (t) t.textContent = n + ' of ' + rows.length + ' answered';
+    var f = document.querySelector('.q-progress-fill');
+    if (f) f.style.width = (rows.length ? Math.round(n * 100 / rows.length) : 0) + '%';
+  }
+  updateProgress();
+  document.querySelectorAll('.q-photo-del').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var photoId=btn.getAttribute('data-photo-id');
+      if(!confirm('Remove this photo?'))return;
+      fetch("{{ url_for('delete_response_photo', audit_id=audit.id, photo_id='PHOTO_ID') }}".replace('PHOTO_ID',photoId),{method:'POST'})
+        .then(function(r){return r.json();}).then(function(d){ if(d.success){btn.closest('.q-photo-thumb-wrap').remove();}else{alert(d.error||'error');} });
+    });
+  });
+  // Durable one-photo-at-a-time upload queue shared with Technical audits.
+  var sectionName = 'civil';
+  var photoDb = new Promise(function(resolve,reject){
+    if(!window.indexedDB) return reject(new Error('Offline photo storage is not supported.'));
+    var req=indexedDB.open('SolarAuditPhotoQueue',1);
+    req.onupgradeneeded=function(){if(!req.result.objectStoreNames.contains('pendingPhotos'))req.result.createObjectStore('pendingPhotos',{keyPath:'id'});};
+    req.onsuccess=function(){resolve(req.result);}; req.onerror=function(){reject(req.error||new Error('Could not open photo queue.'));};
+  });
+  function qPut(r){return photoDb.then(function(db){return new Promise(function(ok,no){var tx=db.transaction('pendingPhotos','readwrite');tx.objectStore('pendingPhotos').put(r);tx.oncomplete=ok;tx.onerror=function(){no(tx.error);};});});}
+  function qDel(id){return photoDb.then(function(db){return new Promise(function(ok,no){var tx=db.transaction('pendingPhotos','readwrite');tx.objectStore('pendingPhotos').delete(id);tx.oncomplete=ok;tx.onerror=function(){no(tx.error);};});});}
+  function qAll(){return photoDb.then(function(db){return new Promise(function(ok,no){var tx=db.transaction('pendingPhotos','readonly'),r=tx.objectStore('pendingPhotos').getAll();r.onsuccess=function(){ok(r.result||[]);};r.onerror=function(){no(r.error);};});});}
+  function qId(){return window.crypto&&crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);});}
+  function clusterFor(qid){var i=document.getElementById('photo_'+qid);return i&&i.closest('.q-row')?i.closest('.q-row').querySelector('.q-photos'):null;}
+  function showSaved(cluster,result,state){if(!cluster||cluster.querySelector('[data-photo-id="'+result.photo_id+'"]'))return;var w=document.createElement('div');w.className='q-photo-thumb-wrap';w.dataset.photoId=result.photo_id;var a=document.createElement('a');a.className='q-photo-thumb';a.href=result.photo_url;a.target='_blank';var im=document.createElement('img');im.src=result.photo_url;im.alt='Audit photo';a.appendChild(im);w.appendChild(a);cluster.insertBefore(w,cluster.querySelector('.q-photo-add')||null);if(state)state.textContent='✓ Photo uploaded';}
+  var uploadChain=Promise.resolve();
+  function uploadRecord(r,cluster,state){var task=uploadChain.then(async function(){if(!navigator.onLine)throw new Error('Offline — photo saved in queue.');if(state)state.textContent='Uploading photo…';var fd=new FormData();fd.append('photo',r.blob,r.filename||'photo.jpg');fd.append('question_id',r.questionId);fd.append('response_status',r.status);fd.append('client_photo_id',r.id);fd.append('section',sectionName);fd.append('remarks',r.remarks||'');fd.append('photo_latitude_'+r.questionId,r.latitude||'');fd.append('photo_longitude_'+r.questionId,r.longitude||'');fd.append('photo_accuracy_'+r.questionId,r.accuracy||'');fd.append('photo_captured_at_'+r.questionId,r.capturedAt||'');var resp=await fetch("{{ url_for('audit_section_photo_upload', audit_id=audit.id) }}",{method:'POST',credentials:'same-origin',body:fd});var data=await resp.json().catch(function(){return {};});if(!resp.ok||!data.ok)throw new Error(data.error||('Upload failed ('+resp.status+')'));await qDel(r.id);showSaved(cluster,data,state);});uploadChain=task.catch(function(){});return task;}
+  async function retrySectionPhotos(){if(!navigator.onLine)return;try{var rows=await qAll();for(var n=0;n<rows.length;n++){var r=rows[n];if(r.auditId!=='{{ audit.id }}'||r.section!==sectionName)continue;var c=clusterFor(r.questionId);if(!c)continue;var st=c.querySelector('.photo-upload-state');try{await uploadRecord(r,c,st);}catch(e){if(st)st.textContent='Queued for retry: '+e.message;}}}catch(e){console.warn('Photo queue could not be read',e);}}
+  document.querySelectorAll('.hidden-file-input').forEach(function(input){input.addEventListener('change',async function(){if(!input.files||!input.files.length)return;var file=input.files[0],qid=input.id.replace('photo_',''),row=input.closest('.q-row'),cluster=row.querySelector('.q-photos'),state=cluster.querySelector('.photo-upload-state'),picked=row.querySelector('input[name="response_status_'+qid+'"]:checked');if(!picked){input.value='';if(state)state.textContent='Select C, NC or NA before adding a photo.';return;}if(file.size>50*1024*1024){input.value='';if(state)state.textContent='Photo exceeds the 50 MB limit.';return;}if(state)state.textContent='Getting GPS…';try{var pos=await new Promise(function(ok,no){if(!navigator.geolocation)return no(new Error('Location unavailable.'));navigator.geolocation.getCurrentPosition(ok,function(){no(new Error('GPS is required. Enable location permission and retry.'));},{enableHighAccuracy:true,timeout:15000,maximumAge:0});});var remarks=row.querySelector('input[name="remarks_'+qid+'"]');var rec={id:qId(),auditId:'{{ audit.id }}',section:sectionName,questionId:qid,status:picked.value,remarks:remarks?remarks.value:'',blob:file,filename:file.name,latitude:String(pos.coords.latitude),longitude:String(pos.coords.longitude),accuracy:String(pos.coords.accuracy||''),capturedAt:new Date().toISOString()};await qPut(rec);input.value='';await uploadRecord(rec,cluster,state);}catch(e){if(state)state.textContent=e.message||'Photo remains queued for retry.';}});});
+  window.addEventListener('online',retrySectionPhotos);retrySectionPhotos();
+});
+</script>
+{% endblock %}

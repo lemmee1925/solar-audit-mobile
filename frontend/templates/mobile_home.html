@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Mobile Audit{% endblock %}
+{% block extra_style %}
+.mobile-home h1 { font-family: sans-serif; font-size:27px; margin-bottom:4px; }
+.mobile-home .sub { color:var(--ink-2); font-size:13px; margin-bottom:18px; }
+.mobile-cta { display:flex; align-items:center; justify-content:center; min-height:58px; border-radius:14px; background:var(--accent); color:#fff; text-decoration:none; font-weight:700; margin-bottom:12px; box-shadow:0 8px 18px rgba(30,92,66,.18); }
+.mobile-card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:10px; }
+.mobile-card .meta { color:var(--ink-3); font-size:11px; margin-top:4px; }
+.mobile-card .open { display:inline-flex; margin-top:10px; padding:9px 12px; border-radius:9px; background:var(--accent-soft); color:var(--accent-d); text-decoration:none; font-size:12px; font-weight:700; }
+.mobile-tip { padding:13px; background:var(--medium-soft); border:1px solid var(--line); border-radius:12px; color:var(--ink-2); font-size:12px; margin-top:14px; }
+{% endblock %}
+{% block content %}
+<div class="mobile-home">
+  <h1>Site Audit</h1>
+  <div class="sub">{{ site.site_name }} · mobile audit workspace</div>
+  <a class="mobile-cta" href="{{ url_for('static', filename='offline.html') }}">＋ Start / Continue Offline Audit</a>
+  <div class="section-div">Recent audits</div>
+  {% for audit, plant in audits %}
+  <div class="mobile-card">
+    <strong>{{ audit.audit_number or audit.id|string|truncate(8, True, '') }}</strong>
+    <div>{{ plant.name }}</div>
+    <div class="meta">{{ audit.audit_date or 'No date' }} · {{ audit.status|upper }}</div>
+    <a class="open" href="{{ url_for('audit_equipment', audit_id=audit.id) }}">Open audit →</a>
+  </div>
+  {% else %}
+  <div class="mobile-card">No audits yet. Start your first site audit.</div>
+  {% endfor %}
+  <div class="mobile-tip"><strong>Offline-first:</strong> download plants and checklist once, then audits can continue without internet. &nbsp; <strong>Photo GPS:</strong> when you capture an audit photo, the app asks for phone location and burns the coordinates + capture time onto the image.</div>
+</div>
+<script>
+(function(){
+  function checkPending(){
+    if(!navigator.onLine) return;
+    try {
+      var r=indexedDB.open('solar_audit',3);
+      r.onsuccess=function(e){
+        var db=e.target.result;
+        if(!db.objectStoreNames.contains('audits')) return;
+        var tx=db.transaction('audits','readonly'), req=tx.objectStore('audits').getAll();
+        req.onsuccess=function(){
+          var pending=(req.result||[]).some(function(a){return a.status!=='synced';});
+          if(pending && location.pathname==='/mobile') location.href='{{ url_for("static", filename="offline.html") }}';
+        };
+      };
+    } catch(e){}
+  }
+  window.addEventListener('online',checkPending);
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(checkPending,500);});
+})();
+</script>
+{% endblock %}

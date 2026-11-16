@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Edit User{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Edit User: {{ user.username }}</h1>
+    <p class="page-sub">Update user details and permissions</p>
+  </div>
+  <a href="{{ url_for('users') }}" class="btn btn-ghost">← Back to Users</a>
+</div>
+
+<div class="card" style="max-width: 600px;">
+  <form method="POST" action="{{ url_for('users_edit', user_id=user.id) }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" value="{{ user.username }}" disabled style="background-color: #F3F4F6; color: #6B7280;">
+        <small style="color: #6B7280; font-size: 12px; margin-top: 4px; display: block;">Username cannot be changed</small>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="full_name">Full Name *</label>
+        <input type="text" id="full_name" name="full_name" value="{{ user.full_name }}" required>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="role">Role *</label>
+        <select id="role" name="role" required onchange="soUpdatePlantVisibility()">
+          <option value="user" {% if user is defined and user.role == 'user' %}selected{% endif %}>User — restricted access within the assigned site</option>
+          <option value="engineer" {% if user is defined and user.role == 'engineer' %}selected{% endif %}>Engineer — assigned plants and audit workflows</option>
+          <option value="site_admin" {% if user is defined and user.role == 'site_admin' %}selected{% endif %}>Site Admin — full administration of this site</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row" id="plant-assignment-row">
+      <div class="form-group">
+        <label>Assigned Plant(s)</label>
+        <p class="page-sub" style="margin: 0 0 8px;">
+          This user will only see and be able to audit the plant(s) checked below.
+        </p>
+        {% if plants %}
+          {% for plant in plants %}
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-bottom:6px;">
+              <input type="checkbox" name="plant_ids" value="{{ plant.id }}" style="width:auto;"
+                {% if plant.id in assigned_ids %}checked{% endif %}>
+              {{ plant.name }}{% if plant.location %} — {{ plant.location }}{% endif %}
+            </label>
+          {% endfor %}
+        {% else %}
+          <p class="page-sub">No plants exist yet — add a plant first, then come back to assign it.</p>
+        {% endif %}
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="is_active">
+          <input type="checkbox" id="is_active" name="is_active" {% if user.is_active %}checked{% endif %} style="margin-right: 8px;">
+          Account is Active
+        </label>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="password">Password (leave empty to keep current)</label>
+        <input type="password" id="password" name="password" placeholder="Leave empty to keep current password">
+      </div>
+    </div>
+    
+    <div class="form-row" style="margin-top: 30px;">
+      <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+      <a href="{{ url_for('users') }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<style>
+.card { margin-top: 20px; }
+select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1F2937;
+  background: white;
+  width: 100%;
+}
+select:focus {
+  outline: none;
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px rgba(124, 184, 89, 0.15);
+}
+input[type="checkbox"] {
+  cursor: pointer;
+}
+</style>
+<script>
+function soUpdatePlantVisibility() {
+  var role = document.getElementById('role').value;
+  document.getElementById('plant-assignment-row').style.display = (role === 'site_admin') ? 'none' : '';
+}
+soUpdatePlantVisibility();
+</script>
+{% endblock %}

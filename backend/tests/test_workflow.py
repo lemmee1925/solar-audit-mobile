@@ -1,0 +1,463 @@
+"""
+End-to-end tests for the checkpoint / observation / closure / scoring / report /
+safety / Overview work. Runs the real Flask app against a throw-away data dir.
+
+    cd backend && python -m pytest tests/test_workflow.py -v
+"""
+import io
+import os
+import re
+import sys
+
+import pytest
+
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from PIL import Image  # noqa: E402
+
+import app as appmod  # noqa: E402
+from models import (Session, AssetType, AuditQuestion, Observation, ObservationEvent,  # noqa: E402
+                    AuditResponse, AuditResponsePhoto, ObservationPhoto, Audit, Asset)
+
+
+def jpeg(color=(200, 50, 50)):
+    b = io.BytesIO()
+    Image.new('RGB', (320, 240), color).save(b, 'JPEG')
+    b.seek(0)
+    return b
+
+
+def login(c, user, pw):
+    return c.post('/login', data={'username': user, 'password': pw}, follow_redirects=True)
+
+
+@pytest.fixture(scope='module')
+def world():
+    appmod.app.config['TESTING'] = True
+    admin = appmod.app.test_client()
+    admin.post('/setup', data={'site_id': 'PUNE01', 'site_name': 'Pune', 'username': 'admin',
+                               'full_name': 'Site Admin', 'password': 'adminpass123'})
+    assert login(admin, 'admin', 'adminpass123').request.path == '/dashboard'
+    # two plants
+    for n in ('Plant A', 'Plant B'):
+        admin.post('/plants', data={'name': n, 'location': 'X', 'capacity_mw': '2'})
+    page = admin.get('/audit/new').get_data(as_text=True)
+    ids = dict((m.group(2), m.group(1)) for m in re.finditer(r'<option value="([0-9a-f-]{36})"[^>]*>\s*(Plant [AB])', page))
+    # users: engineer (reviewer) on Plant A only, technician on Plant A only
+    admin.post('/users/new', data={'username': 'eng', 'full_name': 'Eng One', 'password': 'engpass1234',
+                                   'role': 'engineer', 'plant_ids': [ids['Plant A']]})
+    admin.post('/users/new', data={'username': 'tech', 'full_name': 'Tech One', 'password': 'techpass1234',
+                                   'role': 'technician', 'plant_ids': [ids['Plant A']]})
+    eng, tech = appmod.app.test_client(), appmod.app.test_client()
+    login(eng, 'eng', 'engpass1234'); login(tech, 'tech', 'techpass1234')
+    return {'admin': admin, 'eng': eng, 'tech': tech, 'plants': ids}
+
+
+def new_audit(client, plant_id):
+    r = client.post('/audit/new', data={'plant_id': plant_id, 'audit_date': '2026-10-01', 'audit_time': '10:00',
+                                        'audit_type': 'O&M', 'auditor_name': 'Aud', 'auditee_name': 'Site Rep'},
+                    follow_redirects=True)
+    return r.request.path.split('/')[2]
+
+
+def add_asset(client, audit_id, type_name, name):
+    s = Session()
+    tid = s.query(AssetType).filter_by(name=type_name).first().id
+    s.close()
+    r = client.post(f'/audit/{audit_id}/add-equipment', data={'equipment_name': name, 'asset_type_id': tid})
+    return r.get_json()['asset_id'], tid
+
+
+def qids(type_name=None, safety=False):
+    s = Session()
+    try:
+        if safety:
+            from models import AuditSection
+            sec = s.query(AuditSection).filter_by(name='Safety').first()
+            return [q.id for q in s.query(AuditQuestion).filter_by(section_id=sec.id).order_by(AuditQuestion.question_order)]
+        tid = s.query(AssetType).filter_by(name=type_name).first().id
+        return [q.id for q in s.query(AuditQuestion).filter_by(asset_type_id=tid, is_active=True).order_by(AuditQuestion.question_order)]
+    finally:
+        s.close()
+
+
+def test_checklist_structure_and_safety_seed():
+    assert len(qids('Inverters')) == 12
+    assert len(qids(safety=True)) >= 10  # Safety checklist exists (was empty -> page was broken)
+
+
+def test_site_isolation_between_plants(world):
+    a = new_audit(world['admin'], world['plants']['Plant A'])
+    b = new_audit(world['admin'], world['plants']['Plant B'])
+    assert world['tech'].get(f'/audit/{a}/equipment').status_code == 200
+    # tech is not assigned to Plant B: redirected away, never shown that audit
+    r = world['tech'].get(f'/audit/{b}/equipment', follow_redirects=True)
+    assert r.request.path == '/audits'
+    assert world['tech'].get(f'/audit/{b}/safety', follow_redirects=True).request.path == '/audits'
+    assert b not in world['tech'].get('/audits').get_data(as_text=True)
+    assert a in world['admin'].get('/audits').get_data(as_text=True) and b in world['admin'].get('/audits').get_data(as_text=True)
+
+
+def test_safety_page_works_and_saves(world):
+    c = world['tech']
+    aid = new_audit(world['admin'], world['plants']['Plant A'])
+    r = c.get(f'/audit/{aid}/safety')
+    assert r.status_code == 200 and 'Complied' in r.get_data(as_text=True)
+    q = qids(safety=True)
+    r = c.post(f'/audit/{aid}/safety/save', data={
+        f'response_status_{q[0]}': 'pass', f'remarks_{q[0]}': 'all wearing PPE',
+        f'response_status_{q[1]}': 'fail', f'obs_text_{q[1]}': 'Signage missing at HT panel',
+        f'obs_severity_{q[1]}': 'major', f'obs_responsible_{q[1]}': 'Site Team', f'obs_target_{q[1]}': '2099-01-01',
+        f'response_status_{q[2]}': 'na',
+        f'photo_{q[1]}': (jpeg(), 'p.jpg'),
+    }, content_type='multipart/form-data', follow_redirects=True)
+    assert 'Safety audit saved (3' in r.get_data(as_text=True)
+    s = Session()
+    resp = s.query(AuditResponse).filter_by(audit_id=aid, question_id=q[1]).first()
+    assert resp.asset_id is None and resp.response_status == 'fail'
+    assert s.query(AuditResponsePhoto).filter_by(audit_response_id=resp.id).count() == 1  # photo linked to the checkpoint
+    ob = s.query(Observation).filter_by(audit_response_id=resp.id).first()
+    assert ob.severity is None and ob.responsible_person == 'Site Team' and ob.target_date == '2099-01-01'
+    s.close()
+    # reload shows the saved state
+    assert 'NC finding details' in c.get(f'/audit/{aid}/safety').get_data(as_text=True)
+
+
+def test_technical_responses_remarks_photos_and_no_obs_for_compliant(world):
+    c = world['tech']
+    aid = new_audit(world['admin'], world['plants']['Plant A'])
+    asset, _ = add_asset(world['admin'], aid, 'Inverters', 'INV-1')
+    q = qids('Inverters')
+    form = {'asset_id': asset, 'is_audited': 'yes', 'rank': '3', 'location': 'Block 1',
+            f'response_status_{q[0]}': 'pass', f'remarks_{q[0]}': 'fine',
+            f'response_status_{q[1]}': 'na',
+            f'response_status_{q[2]}': 'fail', f'obs_text_{q[2]}': 'Fuse blown', f'obs_severity_{q[2]}': 'critical',
+            f'obs_responsible_{q[2]}': 'O&M Team', f'obs_target_{q[2]}': '2099-02-02',
+            f'photo_{q[0]}': (jpeg(), 'a.jpg'), f'photo_{q[2]}': (jpeg((0, 0, 200)), 'b.jpg'),
+            f'photo_latitude_{q[2]}': '18.52', f'photo_longitude_{q[2]}': '73.85', f'photo_accuracy_{q[2]}': '5'}
+    r = c.post(f'/audit/{aid}/equipment/save', data=form, content_type='multipart/form-data', follow_redirects=True)
+    assert r.status_code == 200
+    s = Session()
+    rs = {x.question_id: x for x in s.query(AuditResponse).filter_by(audit_id=aid, asset_id=asset)}
+    assert rs[q[0]].response_status == 'pass' and rs[q[1]].response_status == 'na' and rs[q[2]].response_status == 'fail'
+    # observation ONLY for the Not Complied one
+    assert s.query(Observation).filter_by(audit_id=aid).count() == 1
+    ph = s.query(AuditResponsePhoto).filter_by(audit_response_id=rs[q[2]].id).first()
+    assert ph and ph.latitude == pytest.approx(18.52) and f'/{str(asset).replace(chr(45), '')[:12]}/' in ph.file_path.replace('\\', '/')
+    assert s.query(AuditResponsePhoto).filter_by(audit_response_id=rs[q[0]].id).count() == 1
+    s.close()
+    # a question from ANOTHER equipment type is ignored (cannot be injected)
+    foreign = qids('SCB')[0]
+    c.post(f'/audit/{aid}/equipment/save', data={'asset_id': asset, f'response_status_{foreign}': 'pass'},
+           content_type='multipart/form-data')
+    s = Session()
+    assert s.query(AuditResponse).filter_by(audit_id=aid, question_id=foreign).count() == 0
+    s.close()
+    # changing NC -> Complied withdraws (never deletes) the observation
+    c.post(f'/audit/{aid}/equipment/save', data={'asset_id': asset, f'response_status_{q[2]}': 'pass'},
+           content_type='multipart/form-data')
+    s = Session()
+    ob = s.query(Observation).filter_by(audit_id=aid).first()
+    assert ob is not None and ob.status == 'withdrawn'
+    s.close()
+
+
+def _audit_with_nc(world, severity='major', target='2099-03-03'):
+    aid = new_audit(world['admin'], world['plants']['Plant A'])
+    asset, _ = add_asset(world['admin'], aid, 'SCB', 'SCB-1')
+    q = qids('SCB')
+    data = {'asset_id': asset, f'response_status_{q[0]}': 'pass', f'response_status_{q[1]}': 'pass',
+            f'response_status_{q[2]}': 'fail', f'obs_text_{q[2]}': 'Fuse issue', f'obs_severity_{q[2]}': severity,
+            f'obs_responsible_{q[2]}': 'Team X', f'obs_target_{q[2]}': target}
+    world['tech'].post(f'/audit/{aid}/equipment/save', data=data, content_type='multipart/form-data')
+    s = Session()
+    obs_id = s.query(Observation).filter_by(audit_id=aid).first().id
+    s.close()
+    return aid, obs_id
+
+
+def test_submit_allows_incomplete_observation_then_complete_details(world):
+    c = world['tech']
+    aid = new_audit(world['admin'], world['plants']['Plant A'])
+    asset, _ = add_asset(world['admin'], aid, 'SCB', 'SCB-X')
+    q = qids('SCB')
+
+    # Record one compliant checkpoint and one NC without follow-up details.
+    c.post(
+        f'/audit/{aid}/equipment/save',
+        data={
+            'asset_id': asset,
+            f'response_status_{q[0]}': 'pass',
+            f'response_status_{q[1]}': 'fail',
+        },
+        content_type='multipart/form-data',
+    )
+
+    # Submission is allowed even when NC details are incomplete.
+    r = c.post(f'/audit/{aid}/submit', follow_redirects=True)
+    assert 'Audit submitted successfully' in r.get_data(as_text=True)
+
+    s = Session()
+    a = s.query(Audit).get(aid)
+    assert a.status == 'submitted'
+    assert a.submitted_at
+    assert a.score_pct is not None
+    assert a.site_rating
+    assert a.compliance_pct == 50.0
+    assert a.score_pct == 25.0
+    obs = s.query(Observation).filter_by(audit_id=aid).first()
+    assert obs is not None
+    oid = obs.id
+    s.close()
+
+    # Submitted audits should generate a downloadable PDF report.
+    r = c.get(f'/audit/{aid}/report')
+    assert r.status_code == 200
+    assert r.data[:4] == b'%PDF'
+
+    # Checkpoint editing remains locked after submission.
+    r = c.post(
+        f'/audit/{aid}/equipment/save',
+        data={'asset_id': asset},
+        content_type='multipart/form-data',
+        follow_redirects=True,
+    )
+    assert 'locked' in r.get_data(as_text=True).lower()
+
+    # Finding details can be completed afterward through Observations.
+    r = c.post(
+        f'/observation/{oid}/details',
+        data={
+            'observation': 'Door lock broken',
+            'severity': 'minor',
+            'responsible_person': 'Elec team',
+            'target_date': '2099-01-01',
+        },
+        follow_redirects=True,
+    )
+    assert 'Observation details updated' in r.get_data(as_text=True)
+
+    s = Session()
+    obs = s.query(Observation).get(oid)
+    assert obs.observation == 'Door lock broken'
+    assert obs.severity == 'minor'
+    assert obs.responsible_person == 'Elec team'
+    assert str(obs.target_date)[:10] == '2099-01-01'
+    s.close()
+
+
+def test_severity_weighting_changes_score():
+    import site_scope as scoring
+    base = [('pass', None, None)] * 8
+    minor = scoring.compute_score(base + [('fail', 'minor', None)] * 2)
+    crit = scoring.compute_score(base + [('fail', 'critical', None)] * 2)
+    assert minor['compliance_pct'] == crit['compliance_pct'] == 80.0
+    assert crit['score_pct'] < minor['score_pct']
+    assert scoring.compute_score([('na', None, None)])['rating'] == 'Not Rated'
+
+
+def test_closure_workflow_accept_reject_reopen(world):
+    aid, oid = _audit_with_nc(world)
+    tech, eng = world['tech'], world['eng']
+    # cannot submit for review without action + evidence
+    r = tech.post(f'/observation/{oid}/update', data={'do': 'submit', 'action_taken': '', 'closure_date': ''},
+                  content_type='multipart/form-data', follow_redirects=True)
+    assert 'Before submitting for review' in r.get_data(as_text=True)
+    # technician (not a reviewer) cannot accept
+    s = Session(); assert s.query(Observation).get(oid).status in ('open', 'in_progress'); s.close()
+    # provide action + closure evidence photo, submit
+    r = tech.post(f'/observation/{oid}/update', data={'do': 'submit', 'action_taken': 'Replaced fuse',
+                  'closure_date': '2026-10-02', 'closure_photos': (jpeg((0, 150, 0)), 'c.jpg')},
+                  content_type='multipart/form-data', follow_redirects=True)
+    assert 'Submitted for review' in r.get_data(as_text=True)
+    s = Session(); o = s.query(Observation).get(oid)
+    assert o.status == 'submitted' and s.query(ObservationPhoto).filter_by(observation_id=oid).count() == 1; s.close()
+    # not closed by owner: tech accept attempt rejected
+    r = tech.post(f'/observation/{oid}/review', data={'decision': 'accept'}, follow_redirects=True)
+    assert 'Only a Quality/Engineering reviewer' in r.get_data(as_text=True)
+    s = Session(); assert s.query(Observation).get(oid).status == 'submitted'; s.close()
+    # reject needs a comment
+    r = eng.post(f'/observation/{oid}/review', data={'decision': 'reject', 'reviewer_comments': ''}, follow_redirects=True)
+    assert 'comment is required' in r.get_data(as_text=True)
+    r = eng.post(f'/observation/{oid}/review', data={'decision': 'reject', 'reviewer_comments': 'Photo unclear'}, follow_redirects=True)
+    s = Session(); o = s.query(Observation).get(oid); assert o.status == 'rejected' and o.reviewer_comments == 'Photo unclear'; s.close()
+    # owner reworks and resubmits (evidence already attached)
+    tech.post(f'/observation/{oid}/update', data={'do': 'submit', 'action_taken': 'Replaced fuse + retested',
+              'closure_date': '2026-10-03'}, content_type='multipart/form-data')
+    s = Session(); assert s.query(Observation).get(oid).status == 'submitted'; s.close()
+    # reviewer accepts -> only now closed
+    eng.post(f'/observation/{oid}/review', data={'decision': 'accept', 'reviewer_comments': 'OK'})
+    s = Session(); o = s.query(Observation).get(oid)
+    assert o.status == 'closed' and o.closed_at and o.review_status == 'accepted'; s.close()
+    # closed cannot be edited by owner
+    r = tech.post(f'/observation/{oid}/update', data={'do': 'save', 'action_taken': 'tamper'},
+                  content_type='multipart/form-data', follow_redirects=True)
+    s = Session(); assert s.query(Observation).get(oid).action_taken != 'tamper'; s.close()
+    # reopen requires reason
+    eng.post(f'/observation/{oid}/review', data={'decision': 'reopen', 'reviewer_comments': ''})
+    s = Session(); assert s.query(Observation).get(oid).status == 'closed'; s.close()
+    eng.post(f'/observation/{oid}/review', data={'decision': 'reopen', 'reviewer_comments': 'Recurred'})
+    s = Session(); o = s.query(Observation).get(oid); assert o.status == 'reopened' and o.reopen_count == 1 and o.closed_at is None
+    # full history retained
+    events = [e.event_type for e in s.query(ObservationEvent).filter_by(observation_id=oid).order_by(ObservationEvent.created_at)]
+    for needed in ('created', 'submitted_for_review', 'rejected', 'accepted', 'reopened'):
+        assert needed in events
+    s.close()
+    assert 'Recurred' in eng.get(f'/observation/{oid}').get_data(as_text=True)
+
+
+def test_overdue_is_derived(world):
+    aid, oid = _audit_with_nc(world, target='2020-01-01')  # in the past
+    import site_scope as o
+    s = Session(); ob = s.query(Observation).get(oid)
+    assert o.is_overdue(ob) and o.display_status(ob) == 'Overdue'; s.close()
+    assert 'Overdue' in world['admin'].get('/observations?status=overdue').get_data(as_text=True)
+
+
+def test_observation_access_is_plant_scoped(world):
+    s = Session()
+    b = new_audit(world['admin'], world['plants']['Plant B'])
+    asset, _ = add_asset(world['admin'], b, 'SCB', 'SCB-B')
+    q = qids('SCB')
+    world['admin'].post(f'/audit/{b}/equipment/save', data={'asset_id': asset, f'response_status_{q[0]}': 'fail',
+                        f'obs_text_{q[0]}': 'B only', f'obs_severity_{q[0]}': 'minor', f'obs_responsible_{q[0]}': 'x',
+                        f'obs_target_{q[0]}': '2099-01-01'}, content_type='multipart/form-data')
+    oid = s.query(Observation).filter_by(audit_id=b).first().id
+    s.close()
+    r = world['tech'].get(f'/observation/{oid}', follow_redirects=True)
+    assert r.request.path == '/observations' and 'B only' not in r.get_data(as_text=True)
+    assert 'B only' not in world['tech'].get('/observations').get_data(as_text=True)
+    assert 'B only' in world['admin'].get('/observations').get_data(as_text=True)
+
+
+def test_overview_renders_one_graph_with_new_data(world):
+    r = world['admin'].get('/dashboard')
+    html = r.get_data(as_text=True)
+    assert r.status_code == 200
+    assert html.count('<svg') == 1 and 'pulse-svg' in html     # only the primary graph
+    assert 'trend-svg' not in html and 'Pass-Rate Trend' not in html  # 2nd graph removed
+    for label in ('Critical', 'Major', 'Minor', 'Overdue', 'Closure rate', 'Open observation ageing', 'Audit score'):
+        assert label in html
+
+
+def test_uploads_require_login(world):
+    anon = appmod.app.test_client()
+    assert anon.get('/uploads/x.jpg').status_code in (302, 401)
+
+
+def test_typography_is_sans_serif_only():
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + '/frontend'
+    bad = []
+    for d in ('templates', 'static'):
+        for f in os.listdir(f'{root}/{d}'):
+            if f.endswith(('.html', '.css', '.js')):
+                txt = open(f'{root}/{d}/{f}', encoding='utf-8').read()
+                for m in re.finditer(r'font-family\s*:\s*([^;}"]+)', txt):
+                    if m.group(1).strip() != 'sans-serif':
+                        bad.append((f, m.group(1)))
+                if '@font-face' in txt:
+                    bad.append((f, '@font-face'))
+    assert not bad, bad
+    assert not os.path.exists(f'{root}/static/fonts')
+
+
+
+def test_ofi_checkpoint_creates_distinct_observation(world):
+    """OFI must sync into the existing observation workflow without becoming NC."""
+    aid = new_audit(world['admin'], world['plants']['Plant A'])
+    asset_id, _ = add_asset(world['admin'], aid, 'Inverters', 'INV-OFI-1')
+    qid = qids('Inverters')[0]
+    response = world['tech'].post(
+        f'/audit/{aid}/equipment/save',
+        data={
+            'asset_id': asset_id,
+            f'response_status_{qid}': 'ofi',
+            f'remarks_{qid}': 'Consider improving cable labelling.',
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    session = Session()
+    try:
+        saved = session.query(AuditResponse).filter_by(audit_id=aid, asset_id=asset_id, question_id=qid).first()
+        assert saved is not None and saved.response_status == 'ofi'
+        observation = session.query(Observation).filter_by(audit_response_id=saved.id).first()
+        assert observation is not None
+        assert observation.finding_type == 'OFI'
+        assert observation.status == 'open'
+    finally:
+        session.close()
+
+
+def test_media_downloads_and_reports_enforce_plant_scope(world):
+    """Engineers/users can fetch evidence and reports only for assigned plants."""
+    from pathlib import Path
+    from models import ObservationPhoto
+
+    admin = world['admin']
+    restricted = world['tech']
+    audit_a = new_audit(admin, world['plants']['Plant A'])
+    audit_b = new_audit(admin, world['plants']['Plant B'])
+    asset_a, _ = add_asset(admin, audit_a, 'Inverters', 'MEDIA-A')
+    asset_b, _ = add_asset(admin, audit_b, 'Inverters', 'MEDIA-B')
+    question_id = qids('Inverters')[0]
+
+    response_a = AuditResponse(
+        audit_id=audit_a, asset_id=asset_a, question_id=question_id,
+        response_status='pass'
+    )
+    response_b = AuditResponse(
+        audit_id=audit_b, asset_id=asset_b, question_id=question_id,
+        response_status='pass'
+    )
+
+    session = Session()
+    try:
+        session.add_all([response_a, response_b])
+        session.flush()
+
+        checkpoint_a = f'{audit_a}/media/checkpoint-a.jpg'
+        checkpoint_b = f'{audit_b}/media/checkpoint-b.jpg'
+        session.add_all([
+            AuditResponsePhoto(audit_response_id=response_a.id, file_path=checkpoint_a),
+            AuditResponsePhoto(audit_response_id=response_b.id, file_path=checkpoint_b),
+        ])
+
+        observation_a = Observation(
+            audit_id=audit_a, audit_response_id=response_a.id, site_id='PUNE01',
+            observation='Media authorization test A', severity='major', status='open'
+        )
+        observation_b = Observation(
+            audit_id=audit_b, audit_response_id=response_b.id, site_id='PUNE01',
+            observation='Media authorization test B', severity='major', status='open'
+        )
+        session.add_all([observation_a, observation_b])
+        session.flush()
+
+        closure_a = f'{audit_a}/media/closure-a.jpg'
+        closure_b = f'{audit_b}/media/closure-b.jpg'
+        session.add_all([
+            ObservationPhoto(observation_id=observation_a.id, file_path=closure_a),
+            ObservationPhoto(observation_id=observation_b.id, file_path=closure_b),
+        ])
+        session.commit()
+    finally:
+        session.close()
+
+    uploads = Path(appmod.UPLOAD_FOLDER)
+    for rel_path in (checkpoint_a, checkpoint_b, closure_a, closure_b):
+        target = uploads / rel_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(jpeg().read())
+
+    assert restricted.get(f'/uploads/{checkpoint_a}').status_code == 200
+    assert restricted.get(f'/uploads/{closure_a}').status_code == 200
+    assert restricted.get(f'/uploads/{checkpoint_b}').status_code == 404
+    assert restricted.get(f'/uploads/{closure_b}').status_code == 404
+    assert restricted.get(f'/audit/{audit_b}/report').status_code == 404
+
+    # Site Admin remains able to retrieve evidence across both plants.
+    assert admin.get(f'/uploads/{checkpoint_b}').status_code == 200
+    assert admin.get(f'/uploads/{closure_b}').status_code == 200
+

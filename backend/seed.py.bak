@@ -1,0 +1,117 @@
+"""
+Seeds shared reference data that every installation needs regardless of
+which site it belongs to: the equipment asset types and their audit
+question checklist (from question_data.py).
+
+This is NOT site-specific data (asset_types/audit_questions/audit_sections
+have no site_id — they're the shared checklist definition), so it's safe
+and correct to run this on every install, and it's idempotent (skips if
+already seeded). It deliberately does NOT create any demo Plant/Asset rows
+— those belong to a real site and are created by real users through the
+app after setup, not seeded at install time.
+
+Called automatically once at app startup (see app.py) so a fresh install
+has a working checklist immediately, with no manual step required.
+"""
+from models import Base, engine, Session, AssetType, AuditSection, AuditQuestion
+from question_data import (QUESTION_TAXONOMY, SAFETY_SECTION_NAME, SAFETY_SOURCE,
+                           SAFETY_CHECKPOINTS, CIVIL_SECTION_NAME, CIVIL_SOURCE,
+                           CIVIL_CHECKPOINTS)
+
+
+def ensure_seeded():
+    Base.metadata.create_all(engine)
+    session = Session()
+    try:
+        if session.query(AssetType).count() > 0:
+            return False  # already seeded
+
+        section = AuditSection(name='Checklist', section_order=1)
+        session.add(section)
+        session.commit()
+
+        question_count = 0
+        for asset_type_name, questions in QUESTION_TAXONOMY:
+            at = AssetType(name=asset_type_name)
+            session.add(at)
+            session.commit()
+
+            for i, text in enumerate(questions, start=1):
+                q = AuditQuestion(
+                    asset_type_id=at.id,
+                    section_id=section.id,
+                    question_text=text,
+                    question_order=i,
+                )
+                session.add(q)
+                question_count += 1
+            session.commit()
+
+        print(f'Seeded checklist: {len(QUESTION_TAXONOMY)} asset types, {question_count} questions.')
+        return True
+    finally:
+        session.close()
+
+
+def ensure_safety_checklist():
+    """
+    Idempotently make sure the Safety Audit has a checklist. Safety questions
+    live in their own AuditSection ('Safety') with no equipment type, which
+    keeps the technical equipment -> checkpoint structure untouched. Runs on
+    existing installs too (ensure_seeded() above returns early once equipment
+    exists, so it could never add this). Never overwrites or removes anything.
+    """
+    session = Session()
+    try:
+        section = session.query(AuditSection).filter_by(name=SAFETY_SECTION_NAME).first()
+        if section is None:
+            order = (session.query(AuditSection).count() or 0) + 1
+            section = AuditSection(name=SAFETY_SECTION_NAME, section_order=order)
+            session.add(section)
+            session.commit()
+        existing = session.query(AuditQuestion).filter_by(section_id=section.id).count()
+        if existing:
+            return 0
+        for i, text in enumerate(SAFETY_CHECKPOINTS, start=1):
+            session.add(AuditQuestion(section_id=section.id, asset_type_id=None, question_text=text,
+                                      question_order=i, is_active=True, source=SAFETY_SOURCE))
+        session.commit()
+        print(f'Seeded Safety checklist: {len(SAFETY_CHECKPOINTS, CIVIL_SECTION_NAME, CIVIL_SOURCE,
+                           CIVIL_CHECKPOINTS)} checkpoints.')
+        return len(SAFETY_CHECKPOINTS, CIVIL_SECTION_NAME, CIVIL_SOURCE,
+                           CIVIL_CHECKPOINTS)
+    finally:
+        session.close()
+
+
+def ensure_civil_checklist():
+    """Ensure Civil / Infrastructure exists as a site-level checkpoint audit."""
+    session = Session()
+    try:
+        section = session.query(AuditSection).filter_by(name=CIVIL_SECTION_NAME).first()
+        if section is None:
+            order = (session.query(AuditSection).count() or 0) + 1
+            section = AuditSection(name=CIVIL_SECTION_NAME, section_order=order)
+            session.add(section)
+            session.commit()
+        existing = session.query(AuditQuestion).filter_by(section_id=section.id).count()
+        if existing:
+            return 0
+        for i, text in enumerate(CIVIL_CHECKPOINTS, start=1):
+            session.add(AuditQuestion(
+                section_id=section.id, asset_type_id=None,
+                question_text=text, question_order=i,
+                is_active=True, source=CIVIL_SOURCE
+            ))
+        session.commit()
+        print(f'Seeded Civil / Infrastructure checklist: {len(CIVIL_CHECKPOINTS)} checkpoints.')
+        return len(CIVIL_CHECKPOINTS)
+    finally:
+        session.close()
+
+
+if __name__ == '__main__':
+    if not ensure_seeded():
+        print('Already seeded — nothing to do.')
+    ensure_safety_checklist()
+    ensure_civil_checklist()

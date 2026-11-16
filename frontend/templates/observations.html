@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Observations
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Observations</div>
+    <div class="page-sub">NC and OFI findings and their closure workflow.</div>
+  </div>
+</div>
+<div class="search-bar showcase-search">
+  <input id="observationSearch" type="search" placeholder="Search observations, audits, equipment, responsible person..." autocomplete="off">
+</div>
+<div class="filter-row">
+  <a class="filter-chip {% if not f_status %}active{% endif %}" href="{{ url_for('observations_list', severity=f_sev) }}">All ({{ counts.all }})</a>
+  <a class="filter-chip {% if f_status == 'unfinished' %}active{% endif %}" href="{{ url_for('observations_list', status='unfinished', severity=f_sev) }}">Not closed</a>
+  <a class="filter-chip {% if f_status == 'overdue' %}active{% endif %}" href="{{ url_for('observations_list', status='overdue', severity=f_sev) }}">Overdue ({{ counts.overdue }})</a>
+  {% for key in ['open','in_progress','submitted','rejected','reopened','closed'] %}
+  <a class="filter-chip {% if f_status == key %}active{% endif %}" href="{{ url_for('observations_list', status=key, severity=f_sev) }}">{{ obs_status_labels[key] }} ({{ counts[key] }})</a>
+  {% endfor %}
+</div>
+<div class="filter-row">
+  {% for key, label in [('', 'Any severity'), ('critical','Critical'), ('major','Major'), ('minor','Minor')] %}
+  <a class="filter-chip {% if f_sev == key %}active{% endif %}" href="{{ url_for('observations_list', status=f_status, severity=key) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+<div class="filter-row" style="margin:10px 0 14px;">
+  <select id="plantFilter" class="form-control" style="max-width:280px;">
+    <option value="">All plants</option>
+  </select>
+</div>
+<div class="card scroll-x">
+  <table>
+    <thead><tr><th>Audit</th><th>Plant</th><th>Equipment</th><th>Type</th><th>Observation</th><th>Severity</th><th>Responsible</th><th>Target</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody id="observationsTableBody">
+      {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for(r.audit_href, audit_id=r.audit.id) }}">{{ r.audit.audit_number or r.audit.id[:8] }}</a></td>
+        <td>{{ r.plant_name or "—" }}</td>
+        <td>{{ r.equipment }}</td>
+        <td><span class="badge {{ 'badge-red' if (r.obs.finding_type or 'NC') == 'NC' else 'badge-amber' }}">{{ r.obs.finding_type or 'NC' }}</span></td>
+        <td>{{ (r.obs.observation or r.question.question_text)|truncate(80) }}</td>
+        <td><span class="sev-pill {{ r.obs.severity or 'none' }}">{{ r.obs.severity|sev_label if r.obs.severity else 'Not set' }}</span></td>
+        <td>{{ r.obs.responsible_person or '—' }}</td>
+        <td>{{ r.obs.target_date or '—' }}</td>
+        <td><span class="badge {{ 'badge-red' if r.overdue else ('badge-green' if r.obs.status == 'closed' else 'badge-amber') }}">{{ r.status_label }}</span></td>
+        <td class="m-actions"><a class="btn btn-sm btn-ghost" href="{{ url_for('observation_detail', obs_id=r.obs.id) }}">Open</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9">No observations match this filter.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+(function(){
+ const input=document.getElementById('observationSearch'),body=document.getElementById('observationsTableBody'),plant=document.getElementById('plantFilter'); if(!input||!body||!plant)return;
+ const plants=new Set();Array.from(body.querySelectorAll('tr')).forEach(r=>{const c=r.children[1];if(c&&c.textContent.trim())plants.add(c.textContent.trim());});
+ Array.from(plants).sort().forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;plant.appendChild(o);});
+ function apply(){const q=input.value.trim().toLowerCase(),pf=plant.value.trim().toLowerCase();Array.from(body.querySelectorAll('tr')).forEach(r=>{const text=r.textContent.toLowerCase(),rp=(r.children[1]?r.children[1].textContent:'').trim().toLowerCase();r.style.display=(!q||text.includes(q))&&(!pf||rp===pf)?'':'none';});}
+ input.addEventListener('input',apply);plant.addEventListener('change',apply);
+})();
+</script>
+{% endblock %}

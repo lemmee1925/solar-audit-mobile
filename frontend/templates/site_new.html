@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Add Site{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Add Solar Site</h1><p class="page-sub">Register another site in the central CleanMax system.</p></div><a href="{{ url_for('hq_dashboard') }}" class="btn btn-ghost">← HQ Overview</a></div>
+<div class="card" style="max-width:620px;"><form method="POST">
+<div class="form-row"><div class="form-group"><label>Site ID *</label><input name="site_id" required maxlength="20" placeholder="e.g. RJ042"></div></div>
+<div class="form-row"><div class="form-group"><label>Site Name *</label><input name="site_name" required placeholder="e.g. Bikaner Solar Site"></div></div>
+<div class="form-row"><div class="form-group"><label>Organization</label><select name="organization_id"><option value="">Default active organization</option>{% for org in organizations %}<option value="{{ org.id }}">{{ org.name }}</option>{% endfor %}</select></div></div>
+<div style="margin-top:22px;"><button class="btn btn-primary" type="submit">Create Site</button></div>
+</form></div>
+{% endblock %}

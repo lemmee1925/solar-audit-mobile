@@ -1,0 +1,85 @@
+"""Central-mode identity and site authorization primitives.
+
+This module is intentionally not wired into Flask routes yet. Route and mobile
+API integration belongs to M2B after these rules are tested and the access
+mapping table has been migrated in a controlled deployment.
+"""
+from dataclasses import dataclass
+from typing import Optional
+
+from models import Organization, Site, User, UserSiteAccess
+
+
+class CentralAccessError(Exception):
+    """Base class for denied or invalid central access."""
+
+
+class InactiveIdentityError(CentralAccessError):
+    pass
+
+
+class SiteSelectionRequired(CentralAccessError):
+    pass
+
+
+class SiteAccessDenied(CentralAccessError):
+    pass
+
+
+@dataclass(frozen=True)
+class SiteContext:
+    user_id: str
+    site_id: str
+    site_name: str
+    organization_id: Optional[str]
+    organization_name: Optional[str]
+    is_hq_admin: bool
+
+
+def resolve_site_context(db, user: User, requested_site_id: Optional[str] = None) -> SiteContext:
+    """Resolve one active, authorized site for an authenticated user.
+
+    Site users are always bound to User.site_id; a caller-supplied site cannot
+    switch their context. HQ admins must explicitly select a site and must
+    have an active UserSiteAccess grant for it.
+    """
+    if user is None or not bool(user.is_active):
+        raise InactiveIdentityError("User is missing or inactive")
+
+    is_hq_admin = (user.role or "").strip().lower() == "hq_admin"
+    if is_hq_admin:
+        if not requested_site_id:
+            raise SiteSelectionRequired("HQ administrator must select a site")
+        grant = (db.query(UserSiteAccess)
+                 .filter_by(user_id=str(user.id), site_id=requested_site_id)
+                 .first())
+        if grant is None:
+            raise SiteAccessDenied("HQ administrator has no grant for this site")
+        effective_site_id = requested_site_id
+    else:
+        if not user.site_id:
+            raise SiteAccessDenied("Site user has no assigned site")
+        if requested_site_id and requested_site_id != user.site_id:
+            raise SiteAccessDenied("Site user cannot switch to another site")
+        effective_site_id = user.site_id
+
+    site = db.query(Site).filter_by(site_id=effective_site_id, is_active=True).first()
+    if site is None:
+        raise SiteAccessDenied("Site is missing or inactive")
+
+    organization = None
+    if site.organization_id:
+        organization = db.query(Organization).filter_by(
+            id=site.organization_id, is_active=True
+        ).first()
+        if organization is None:
+            raise SiteAccessDenied("Site organization is missing or inactive")
+
+    return SiteContext(
+        user_id=str(user.id),
+        site_id=site.site_id,
+        site_name=site.site_name,
+        organization_id=organization.id if organization else None,
+        organization_name=organization.name if organization else None,
+        is_hq_admin=is_hq_admin,
+    )

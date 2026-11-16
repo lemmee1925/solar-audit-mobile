@@ -1,0 +1,518 @@
+"""
+Site-scoping helpers.
+
+Every query in app.py that touches Plant/Audit/User/Asset goes through one
+of these helpers rather than a bare `Model.query.get(id)` / `filter_by(id=)`.
+That's what makes "change the ID in the URL" attacks fail: a request for an
+audit that exists but belongs to a different site_id simply doesn't match
+the filter, so it 404s exactly like a nonexistent record — no distinction is
+leaked between "wrong site" and "doesn't exist".
+
+CURRENT_SITE_ID is fixed for the lifetime of the process: it's read once
+from site_config.json at startup (see app.py's before_request guard, which
+redirects to /setup if it isn't configured yet). Ordinary users have no way
+to change it from inside the app.
+"""
+import json
+import os
+from datetime import date, datetime
+
+from models import (Plant, Audit, User, Asset, UserPlantAssignment, AuditResponse, AuditQuestion,
+                    Observation, ObservationEvent, ObservationPhoto, AuditNumberCounter)
+from sqlalchemy import case, func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from paths import config_dir
+from role_policy import is_admin
+
+
+def assigned_plant_ids(session, user):
+    """
+    Returns None if this user is unrestricted (site_admin — sees every plant at
+    the site), or a list of plant_id strings if restricted. An empty list
+    means the user has been created but not yet assigned to any plant —
+    they'll correctly see nothing until an admin assigns one, rather than
+    accidentally seeing everything.
+    """
+    if user is None:
+        return []
+    if is_admin(user):
+        return None
+    rows = session.query(UserPlantAssignment.plant_id).filter_by(user_id=user.id).all()
+    return [r[0] for r in rows]
+
+
+def can_access_plant(session, user, plant_id):
+    ids = assigned_plant_ids(session, user)
+    return ids is None or str(plant_id) in ids
+
+
+def get_plant_or_404(session, plant_id, site_id):
+    if not plant_id:
+        return None
+    return session.query(Plant).filter_by(id=str(plant_id), site_id=site_id).first()
+
+
+def get_audit_or_404(session, audit_id, site_id):
+    if not audit_id:
+        return None
+    return session.query(Audit).filter_by(id=str(audit_id), site_id=site_id).first()
+
+
+def get_user_or_404(session, user_id, site_id):
+    if not user_id:
+        return None
+    return session.query(User).filter_by(id=str(user_id), site_id=site_id).first()
+
+
+def get_asset_or_404(session, asset_id, site_id):
+    if not asset_id:
+        return None
+    return session.query(Asset).filter_by(id=str(asset_id), site_id=site_id).first()
+
+
+def next_audit_number(session, site_id: str, year: int) -> str:
+    """
+    Atomically allocate the next AUD-<year>-<site>-<sequence> number.
+
+    PostgreSQL uses INSERT .. ON CONFLICT DO UPDATE .. RETURNING so
+    simultaneous transactions serialize on the unique (site_id, year)
+    counter key. SQLite uses its atomic UPSERT equivalent for the
+    single-site/offline deployment. Existing audit numbers are accounted
+    for so upgraded databases continue their sequence without collisions.
+
+    The caller owns the transaction and must commit or roll it back.
+    """
+    prefix = f"AUD-{year}-{site_id}-"
+    existing = session.query(Audit.audit_number).filter(
+        Audit.audit_number.like(f"{prefix}%")
+    ).all()
+
+    max_existing = 0
+    for (number,) in existing:
+        try:
+            max_existing = max(max_existing, int(number.rsplit("-", 1)[-1]))
+        except (ValueError, AttributeError):
+            continue
+
+    counter = AuditNumberCounter.__table__
+    dialect = session.get_bind().dialect.name
+    values = {
+        "site_id": site_id,
+        "year": year,
+        "last_sequence": max_existing + 1,
+    }
+
+    if dialect == "postgresql":
+        statement = pg_insert(counter).values(**values)
+        statement = statement.on_conflict_do_update(
+            index_elements=[counter.c.site_id, counter.c.year],
+            set_={
+                "last_sequence": func.greatest(
+                    counter.c.last_sequence, max_existing
+                ) + 1,
+                "updated_at": func.now(),
+            },
+        ).returning(counter.c.last_sequence)
+    elif dialect == "sqlite":
+        statement = sqlite_insert(counter).values(**values)
+        statement = statement.on_conflict_do_update(
+            index_elements=[counter.c.site_id, counter.c.year],
+            set_={
+                "last_sequence": case(
+                    (counter.c.last_sequence > max_existing,
+                     counter.c.last_sequence + 1),
+                    else_=max_existing + 1,
+                ),
+                "updated_at": func.current_timestamp(),
+            },
+        ).returning(counter.c.last_sequence)
+    else:
+        raise RuntimeError(
+            f"Atomic audit numbering is not implemented for database dialect: {dialect}"
+        )
+
+    sequence = session.execute(statement).scalar_one()
+    return f"{prefix}{sequence:06d}"
+
+
+# ===========================================================================
+# Scoring (config-driven; see scoring_config.json in the config directory)
+# ===========================================================================
+DEFAULT_CONFIG = {
+    "severity_weights": {"critical": 5.0, "major": 3.0, "minor": 1.0},
+    "complied_weight": 1.0,
+    "unclassified_severity": "major",
+    # Highest band first. A score >= min gets that rating.
+    "rating_bands": [
+        {"min": 90, "rating": "Excellent"},
+        {"min": 75, "rating": "Good"},
+        {"min": 60, "rating": "Needs Improvement"},
+        {"min": 0, "rating": "Poor"},
+    ],
+    # Open-observation ageing buckets (days open): [label, from, to] (to=null: no upper bound)
+    "ageing_buckets": [["0-7 days", 0, 7], ["8-30 days", 8, 30], ["31-60 days", 31, 60], ["60+ days", 61, None]],
+}
+
+SEVERITIES = ("critical", "major", "minor")
+
+
+def config_path():
+    return os.path.join(str(config_dir()), "scoring_config.json")
+
+
+def load_scoring_config():
+    path = config_path()
+    cfg = json.loads(json.dumps(DEFAULT_CONFIG))  # deep copy
+    if not os.path.exists(path):
+        try:
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(DEFAULT_CONFIG, fh, indent=2)
+        except OSError:
+            pass
+        return cfg
+    try:
+        with open(path, encoding="utf-8") as fh:
+            user = json.load(fh)
+        for key, value in user.items():
+            if key == "severity_weights" and isinstance(value, dict):
+                cfg["severity_weights"].update({k.lower(): float(v) for k, v in value.items()})
+            else:
+                cfg[key] = value
+    except (OSError, ValueError, TypeError):
+        pass  # a broken file falls back to defaults rather than breaking audits
+    return cfg
+
+
+def site_rating_for(score, cfg=None):
+    cfg = cfg or load_scoring_config()
+    for band in sorted(cfg["rating_bands"], key=lambda b: -b["min"]):
+        if score >= band["min"]:
+            return band["rating"]
+    return cfg["rating_bands"][-1]["rating"]
+
+
+def compute_score(rows, cfg=None):
+    """
+    rows: iterable of (response_status, severity_or_None, checkpoint_weight_or_None)
+    Returns a dict with counts, compliance %, weighted score %, rating and the
+    weights used (so the exact basis is stored with the audit).
+    """
+    cfg = cfg or load_scoring_config()
+    sw = cfg["severity_weights"]
+    default_sev = cfg.get("unclassified_severity", "major")
+    complied = not_complied = na = 0
+    w_ok = w_nc = 0.0
+    by_sev = {s: 0 for s in SEVERITIES}
+    unclassified = 0
+    for status, severity, q_weight in rows:
+        st = (status or "").lower()
+        if st == "pass":
+            complied += 1
+            w_ok += float(q_weight) if q_weight else float(cfg["complied_weight"])
+        elif st == "fail":
+            not_complied += 1
+            sev = (severity or "").lower()
+            if sev not in sw:
+                unclassified += 1
+                sev = default_sev
+            by_sev[sev] = by_sev.get(sev, 0) + 1
+            w_nc += float(sw.get(sev, 1.0))
+        else:
+            na += 1
+    applicable = complied + not_complied
+    compliance = round(complied * 100.0 / applicable, 1) if applicable else 0.0
+    denom = w_ok + w_nc
+    score = round(w_ok * 100.0 / denom, 1) if denom else 0.0
+    return {
+        "complied": complied, "not_complied": not_complied, "not_applicable": na,
+        "applicable": applicable, "compliance_pct": compliance, "score_pct": score,
+        "rating": site_rating_for(score, cfg) if applicable else "Not Rated",
+        "not_complied_by_severity": by_sev, "unclassified_not_complied": unclassified,
+        "weights_used": {"severity_weights": sw, "complied_weight": cfg["complied_weight"]},
+    }
+
+
+def audit_rows(session, audit_id):
+    """(status, severity, weight) for every response of an audit, including technical, Safety and Civil / Infrastructure checkpoints."""
+    q = (session.query(AuditResponse.response_status, Observation.severity, AuditQuestion.weight)
+         .join(AuditQuestion, AuditResponse.question_id == AuditQuestion.id)
+         .outerjoin(Observation, Observation.audit_response_id == AuditResponse.id)
+         .filter(AuditResponse.audit_id == audit_id))
+    return q.all()
+
+
+def score_audit(session, audit_id, cfg=None):
+    return compute_score(audit_rows(session, audit_id), cfg)
+
+
+# ===========================================================================
+# Observation / closure workflow
+# ===========================================================================
+REVIEWER_ROLES = ('hq_admin', 'site_admin', 'engineer')
+
+STATUS_LABELS = {
+    'open': 'Open',
+    'in_progress': 'In Progress',
+    'submitted': 'Submitted for Review',
+    'closed': 'Accepted / Closed',
+    'rejected': 'Rejected',
+    'reopened': 'Reopened',
+    'withdrawn': 'Withdrawn',  # internal: checkpoint was changed back to Complied/NA before submission
+}
+SEVERITY_LABELS = {'critical': 'Critical', 'major': 'Major', 'minor': 'Minor'}
+# statuses where the owner still has work to do (and can therefore be overdue)
+WORKING = ('open', 'in_progress', 'rejected', 'reopened')
+# statuses that count as "open" on dashboards (everything not finished)
+UNFINISHED = ('open', 'in_progress', 'submitted', 'rejected', 'reopened')
+
+
+class WorkflowError(Exception):
+    pass
+
+
+def is_reviewer(user):
+    return getattr(user, 'role', None) in REVIEWER_ROLES
+
+
+def today_str():
+    return date.today().isoformat()
+
+
+def is_overdue(obs, today=None):
+    today = today or today_str()
+    return bool(obs.status in WORKING and obs.target_date and obs.target_date < today)
+
+
+def display_status(obs):
+    return 'Overdue' if is_overdue(obs) else STATUS_LABELS.get(obs.status, obs.status)
+
+
+def age_days(obs, now=None):
+    now = now or datetime.utcnow()
+    return max(0, (now - obs.created_at).days) if obs.created_at else 0
+
+
+def obs_log(session, obs, event_type, actor, comment=None, from_status=None, to_status=None):
+    session.add(ObservationEvent(observation_id=obs.id, event_type=event_type,
+                                 from_status=from_status, to_status=to_status,
+                                 comment=comment, actor=actor))
+
+
+def _clean(v):
+    v = (v or '').strip()
+    return v or None
+
+
+def valid_date(v):
+    try:
+        datetime.strptime(v, '%Y-%m-%d')
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Creation / sync from checkpoint responses (called while the audit is a draft)
+# ---------------------------------------------------------------------------
+def sync_observation(session, audit, response, site_id, actor, fields):
+    """
+    Keep an Observation in step with a checkpoint response.
+      fail/ofi -> ensure a typed Observation exists and update supplied fields
+      other -> if one exists, mark it withdrawn (never deleted: traceability)
+    `fields` may contain: observation, severity, responsible_person,
+    target_date, obs_remarks (all optional - only supplied keys are applied).
+    """
+    obs = session.query(Observation).filter_by(audit_response_id=response.id).first()
+    status = (response.response_status or '').lower()
+    if status not in ('fail', 'ofi'):
+        if obs and obs.status != 'withdrawn':
+            prev = obs.status
+            obs.status = 'withdrawn'
+            obs_log(session, obs, 'withdrawn', actor, 'Checkpoint response changed to '
+                f'{"Complied" if status == "pass" else "Not Applicable"}.', prev, 'withdrawn')
+        return None
+
+    if obs is None:
+        obs = Observation(audit_id=audit.id, audit_response_id=response.id,
+                          site_id=site_id, status='open', review_status='pending',
+                          finding_type='OFI' if status == 'ofi' else 'NC')
+        session.add(obs)
+        session.flush()
+        obs_log(session, obs, 'created', actor, 'Raised from Opportunity for Improvement checkpoint.' if status == 'ofi' else 'Raised from Not Complied checkpoint.', None, 'open')
+    elif obs.status == 'withdrawn':
+        obs.status = 'open'
+        obs_log(session, obs, 'restored', actor, 'Checkpoint finding restored.', 'withdrawn', 'open')
+    obs.finding_type = 'OFI' if status == 'ofi' else 'NC'
+
+    if fields.get('observation') is not None:
+        obs.observation = _clean(fields['observation'])
+    sev = (fields.get('severity') or '').lower()
+    if sev in SEVERITY_LABELS:
+        obs.severity = sev
+    if fields.get('responsible_person') is not None:
+        obs.responsible_person = _clean(fields['responsible_person'])
+    td = fields.get('target_date')
+    if td is not None:
+        td = td.strip()
+        if td == '':
+            obs.target_date = None
+        elif valid_date(td):
+            obs.target_date = td  # an invalid date string is ignored, previous value kept
+    if fields.get('obs_remarks') is not None:
+        obs.remarks = _clean(fields['obs_remarks'])
+    return obs
+
+
+def missing_fields(obs):
+    """No observation classification fields are required during audit submission.
+
+    Severity, finding text, responsible team and target date are completed later
+    from the dedicated Observations workflow after the audit is submitted.
+    """
+    return []
+
+
+def incomplete_observations(session, audit_id):
+    rows = session.query(Observation).filter(
+        Observation.audit_id == audit_id, Observation.status != 'withdrawn').all()
+    return [(o, missing_fields(o)) for o in rows if missing_fields(o)]
+
+
+# ---------------------------------------------------------------------------
+# Workflow transitions (post-submission follow-up)
+# ---------------------------------------------------------------------------
+def _closure_photo_count(session, obs):
+    return session.query(ObservationPhoto).filter_by(observation_id=obs.id, kind='closure').count()
+
+
+def start_work(session, obs, actor):
+    if obs.status not in ('open', 'rejected', 'reopened'):
+        raise WorkflowError('Work can only be started on an open, rejected or reopened observation.')
+    prev = obs.status
+    obs.status = 'in_progress'
+    obs_log(session, obs, 'work_started', actor, None, prev, 'in_progress')
+
+
+def save_action(session, obs, actor, action_taken, closure_date):
+    if obs.status not in WORKING:
+        raise WorkflowError('This observation is not in a state where the action can be edited.')
+    new_action = _clean(action_taken)
+    cd = _clean(closure_date)
+    if cd and not valid_date(cd):
+        raise WorkflowError('Closure date is not a valid date.')
+    changed = (new_action != obs.action_taken) or (cd != obs.closure_date)
+    obs.action_taken = new_action
+    obs.closure_date = cd
+    prev = obs.status
+    if obs.status in ('open', 'rejected', 'reopened') and (changed or new_action or cd):
+        obs.status = 'in_progress'
+    if changed or obs.status != prev:
+        obs_log(session, obs, 'action_updated', actor, new_action, prev, obs.status)
+
+
+def submit_for_review(session, obs, actor):
+    if obs.status not in WORKING:
+        raise WorkflowError('Only an open / in-progress / rejected / reopened observation can be submitted.')
+    problems = []
+    if not obs.action_taken:
+        problems.append('action taken')
+    if not obs.closure_date:
+        problems.append('closure date')
+    if _closure_photo_count(session, obs) == 0:
+        problems.append('at least one closure evidence photo')
+    if problems:
+        raise WorkflowError('Before submitting for review please add: ' + ', '.join(problems) + '.')
+    prev = obs.status
+    obs.status = 'submitted'
+    obs.review_status = 'pending'
+    obs_log(session, obs, 'submitted_for_review', actor, obs.action_taken, prev, 'submitted')
+
+
+def review_observation(session, obs, reviewer_name, reviewer_user, decision, comment):
+    if not is_reviewer(reviewer_user):
+        raise WorkflowError('Only a Quality/Engineering reviewer (engineer or admin) can review observations.')
+    comment = _clean(comment)
+    now = datetime.utcnow()
+    if decision == 'accept':
+        if obs.status != 'submitted':
+            raise WorkflowError('Only an observation submitted for review can be accepted.')
+        obs.status, obs.review_status = 'closed', 'accepted'
+        obs.closed_at = now
+        event, to = 'accepted', 'closed'
+    elif decision == 'reject':
+        if obs.status != 'submitted':
+            raise WorkflowError('Only an observation submitted for review can be rejected.')
+        if not comment:
+            raise WorkflowError('A reviewer comment is required when rejecting.')
+        obs.status, obs.review_status = 'rejected', 'rejected'
+        event, to = 'rejected', 'rejected'
+    elif decision == 'reopen':
+        if obs.status != 'closed':
+            raise WorkflowError('Only a closed observation can be reopened.')
+        if not comment:
+            raise WorkflowError('A reviewer comment is required when reopening.')
+        obs.status, obs.review_status = 'reopened', 'pending'
+        obs.closed_at = None
+        obs.reopen_count = (obs.reopen_count or 0) + 1
+        event, to = 'reopened', 'reopened'
+    else:
+        raise WorkflowError('Unknown review decision.')
+    prev_status = 'submitted' if decision != 'reopen' else 'closed'
+    obs.reviewer_comments = comment or obs.reviewer_comments
+    obs.reviewed_by, obs.reviewed_at = reviewer_name, now
+    obs_log(session, obs, event, reviewer_name, comment, prev_status, to)
+
+
+def reassign_observation(session, obs, actor, user, severity, responsible_person, target_date):
+    """Reviewers can re-classify / reassign / re-date until final closure; every change is logged."""
+    if not is_reviewer(user):
+        raise WorkflowError('Only a reviewer can change severity, owner or target date after the audit is submitted.')
+    if obs.status in ('closed', 'withdrawn'):
+        raise WorkflowError('A closed observation cannot be edited. Reopen it first.')
+    changes = []
+    sev = (severity or '').lower()
+    if sev in SEVERITY_LABELS and sev != obs.severity:
+        changes.append(f'severity {obs.severity or "-"} -> {sev}')
+        obs.severity = sev
+    rp = _clean(responsible_person)
+    if rp and rp != obs.responsible_person:
+        changes.append(f'responsible {obs.responsible_person or "-"} -> {rp}')
+        obs.responsible_person = rp
+    td = _clean(target_date)
+    if td:
+        if not valid_date(td):
+            raise WorkflowError('Target date is not a valid date.')
+        if td != obs.target_date:
+            changes.append(f'target date {obs.target_date or "-"} -> {td}')
+            obs.target_date = td
+    if changes:
+        obs_log(session, obs, 'reassigned', actor, '; '.join(changes))
+    return changes
+
+
+def backfill_observations(session, site_id):
+    """
+    Older audits recorded Not Complied ('fail') answers before observations
+    existed. Create an Observation for each so they enter the closure workflow
+    and the dashboard (severity/owner/target stay empty = 'Unclassified' until a
+    reviewer fills them in). Idempotent; never touches existing observations.
+    """
+    have = {r[0] for r in session.query(Observation.audit_response_id).all()}
+    created = 0
+    rows = (session.query(AuditResponse, Audit)
+            .join(Audit, AuditResponse.audit_id == Audit.id)
+            .filter(AuditResponse.response_status.in_(['fail', 'ofi']), Audit.site_id == site_id).all())
+    for resp, audit in rows:
+        if resp.id in have:
+            continue
+        obs = Observation(audit_id=audit.id, audit_response_id=resp.id, site_id=site_id,
+                          status='open', review_status='pending', remarks=resp.remarks,
+                          observation=resp.remarks, finding_type='OFI' if (resp.response_status or '').lower() == 'ofi' else 'NC',
+                          created_at=resp.created_at)
+        session.add(obs)
+        session.flush()
+        obs_log(session, obs, 'created', 'system', 'Imported from an audit recorded before the observation workflow existed.',
+            None, 'open')
+        created += 1
+    return created

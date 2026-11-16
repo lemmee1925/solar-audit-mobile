@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}New Audit{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">New Audit</div>
+    <div class="page-sub">Capture the basic audit details before inspecting site and equipment.</div>
+  </div>
+  <a href="{{ url_for('audits') }}" class="btn btn-ghost">Back to audits</a>
+</div>
+<div class="wizard">
+  <div class="wizard-step active"><span class="step-num">1</span> Basic Info</div>
+  <div class="wizard-step">2</div>
+  <div class="wizard-step">3</div>
+  <div class="wizard-step">4</div>
+</div>
+<div class="card">
+  <form action="{{ url_for('audit_new_post') }}" method="post">
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="plant_id">Select Plant</label>
+        <select name="plant_id" id="plant_id" required>
+          <option value="">Choose a plant</option>
+          {% for plant in plants %}
+          <option value="{{ plant.id }}"
+            data-building-name="{{ plant.building_name or '' }}"
+            data-capacity-mw="{{ plant.capacity_mw or '' }}"
+            data-roof-type="{{ plant.roof_type or '' }}"
+            data-city="{{ plant.city or '' }}"
+            data-state="{{ plant.state or '' }}">{{ plant.name }} - {{ plant.location }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="audit_date">Audit Date</label>
+        <input type="date" id="audit_date" name="audit_date" required>
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="audit_time">Audit Time</label>
+        <input type="time" id="audit_time" name="audit_time">
+      </div>
+      <div class="form-group">
+        <label for="audit_type">Audit Type</label>
+        <input type="text" id="audit_type" name="audit_type" placeholder="e.g. O&M, Safety, Quality">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="auditor_name">Auditor Name</label>
+        <input type="text" id="auditor_name" name="auditor_name" required>
+      </div>
+      <div class="form-group">
+        <label for="auditee_name">Auditee Name</label>
+        <input type="text" id="auditee_name" name="auditee_name">
+      </div>
+    </div>
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="building_name">Site Name</label>
+        <input type="text" id="building_name" name="building_name">
+      </div>
+      <div class="form-group">
+        <label for="capacity_mw">Capacity (MW)</label>
+        <input type="number" step="0.01" id="capacity_mw" name="capacity_mw">
+      </div>
+    </div>
+    <!-- <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="roof_type">Roof Type</label>
+        <input type="text" id="roof_type" name="roof_type">
+      </div>
+      <div class="form-group">
+        <label for="asset_id_ref">Asset ID Reference</label>
+        <input type="text" id="asset_id_ref" name="asset_id_ref">
+      </div>
+    </div> -->
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="city">City</label>
+        <input type="text" id="city" name="city">
+      </div>
+      <div class="form-group">
+        <label for="state">State</label>
+        <select id="state" name="state">
+          <option value="">Select state</option>
+          {% for state_name in ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'] %}
+          <option value="{{ state_name }}">{{ state_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 12px;">
+      <a href="{{ url_for('audits') }}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">Continue to Site Details</button>
+    </div>
+  </form>
+</div>
+<script>
+// Auto-fill from the selected plant's stored master specification (set once
+// by an admin on the Plant Specification page) — still fully editable here
+// per-audit if something has actually changed on-site.
+document.getElementById('plant_id').addEventListener('change', function () {
+  var opt = this.options[this.selectedIndex];
+  if (!opt || !opt.value) return;
+  var map = {
+    building_name: opt.getAttribute('data-building-name'),
+    capacity_mw: opt.getAttribute('data-capacity-mw'),
+    roof_type: opt.getAttribute('data-roof-type'),
+    city: opt.getAttribute('data-city'),
+    state: opt.getAttribute('data-state'),
+  };
+  Object.keys(map).forEach(function (fieldId) {
+    var el = document.getElementById(fieldId);
+    if (el && map[fieldId] && !el.value) {
+      el.value = map[fieldId];
+    }
+  });
+});
+</script>
+{% endblock %}
