@@ -90,3 +90,53 @@ def test_login_rate_limiter_blocks_repeated_failures(monkeypatch):
     assert limited is True
     assert retry_after >= 1
     clear_failures(key)
+
+
+def test_mobile_api_token_logout_revokes_bearer_token(monkeypatch):
+    from werkzeug.security import generate_password_hash
+    from app import app
+    from models import Session, User, MobileAPIToken
+    from paths import site_config_path
+    from site_config import load_site_config, save_site_config
+
+    monkeypatch.setenv("MOBILE_API_ENABLED", "1")
+    monkeypatch.setenv("MOBILE_API_SIGNING_SECRET", "s" * 32)
+    monkeypatch.setenv("DISABLE_LOGIN_RATE_LIMIT", "1")
+    had_site_config = site_config_path().exists()
+    site = load_site_config() or save_site_config("TEST01", "Test Site")
+    try:
+        db = Session()
+        try:
+            user = db.query(User).filter_by(username="rev_tester", site_id=site.site_id).first()
+            if not user:
+                user = User(
+                    username="rev_tester",
+                    full_name="Revocation Tester",
+                    password_hash=generate_password_hash("secret123"),
+                    role="site_admin",
+                    is_active=True,
+                    site_id=site.site_id,
+                )
+                db.add(user)
+                db.commit()
+        finally:
+            db.close()
+
+        client = app.test_client()
+        login_resp = client.post("/api/mobile/v1/auth/token", json={"username": "rev_tester", "password": "secret123"})
+        assert login_resp.status_code == 200
+        token = login_resp.get_json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        assert client.get("/api/mobile/v1/bootstrap", headers=headers).status_code == 200
+        assert client.post("/api/mobile/v1/auth/logout", headers=headers).status_code == 200
+        assert client.get("/api/mobile/v1/bootstrap", headers=headers).status_code == 401
+
+        db = Session()
+        try:
+            assert db.query(MobileAPIToken).count() >= 1
+        finally:
+            db.close()
+    finally:
+        if not had_site_config:
+            site_config_path().unlink(missing_ok=True)

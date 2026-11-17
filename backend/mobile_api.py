@@ -9,7 +9,7 @@ import hashlib
 import json
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import Blueprint, current_app, jsonify, request, g, session as flask_session
@@ -20,7 +20,7 @@ from werkzeug.security import check_password_hash
 from models import (Session, User, Site, Plant, AssetType, Asset, AuditQuestion,
                     AuditSection, UserPlantAssignment, Audit, Observation,
                     ObservationPhoto, ObservationEvent, AuditResponse,
-                    AuditResponsePhoto)
+                    AuditResponsePhoto, MobileAPIToken)
 from site_config import load_site_config
 from site_scope import (
     assigned_plant_ids, load_scoring_config, SEVERITY_LABELS, STATUS_LABELS,
@@ -134,6 +134,12 @@ def _bearer_required(fn):
                 if not user or not user.is_active:
                     return _error('User is unavailable or access has been revoked.', 401)
                 site = configured_site
+            token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+            token_row = db.query(MobileAPIToken).filter_by(token_hash=token_hash).first()
+            if token_row and (token_row.revoked_at is not None or token_row.expires_at <= now_utc):
+                return _error('Access token has been revoked or expired. Sign in again.', 401)
+            g.mobile_token_hash = token_hash
             g.mobile_user_id = str(user.id)
             g.mobile_user_role = user.role
             g.mobile_username = user.username
@@ -213,6 +219,16 @@ def issue_token():
             'sid': site.site_id,
             'ver': 1
         })
+        token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        device_name = str(payload.get('device_name') or request.headers.get('User-Agent') or 'Android device')[:120]
+        db.add(MobileAPIToken(
+            user_id=str(user.id),
+            token_hash=token_hash,
+            device_name=device_name,
+            expires_at=now_utc + timedelta(seconds=TOKEN_MAX_AGE_SECONDS),
+        ))
+        db.commit()
 
         return jsonify({
             'ok': True,
@@ -232,6 +248,20 @@ def issue_token():
         })
     finally:
         db.close()
+
+
+@mobile_api.post('/auth/logout')
+@_bearer_required
+def revoke_token():
+    """Revoke the current mobile bearer token immediately."""
+    db = g.mobile_db
+    token_hash = getattr(g, 'mobile_token_hash', None)
+    if token_hash:
+        row = db.query(MobileAPIToken).filter_by(token_hash=token_hash).first()
+        if row and row.revoked_at is None:
+            row.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.commit()
+    return jsonify({'ok': True})
 
 @mobile_api.get('/bootstrap')
 @_bearer_required
