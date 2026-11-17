@@ -363,6 +363,7 @@ class AuditResponsePhoto(Base):
     longitude = Column(Float)
     gps_accuracy = Column(Float)
     captured_at = Column(DateTime)
+    remark = Column(Text)
     uploaded_at = Column(DateTime, server_default=func.now())
 
 
@@ -426,6 +427,7 @@ class ObservationPhoto(Base):
     longitude = Column(Float)
     gps_accuracy = Column(Float)
     captured_at = Column(DateTime)
+    remark = Column(Text)
     uploaded_by = Column(String(200))
     uploaded_at = Column(DateTime, server_default=func.now())
 
@@ -454,9 +456,15 @@ if DATABASE_URL.startswith('sqlite'):
 # does not add columns to tables that already exist, so the mobile GPS fields
 # need an explicit upgrade the first time this build starts.
 def _ensure_photo_gps_columns():
-    if not DATABASE_URL.startswith('sqlite'):
-        return
     from sqlalchemy import inspect, text
+    if not DATABASE_URL.startswith('sqlite'):
+        for tbl in ('audit_response_photos', 'observation_photos'):
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f'ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS remark TEXT'))
+            except Exception:
+                pass
+        return
     inspector = inspect(engine)
     if 'audit_response_photos' not in inspector.get_table_names():
         return
@@ -466,6 +474,7 @@ def _ensure_photo_gps_columns():
         'longitude': 'FLOAT',
         'gps_accuracy': 'FLOAT',
         'captured_at': 'DATETIME',
+        'remark': 'TEXT',
     }
     with engine.begin() as conn:
         for name, sql_type in additions.items():

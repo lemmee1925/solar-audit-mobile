@@ -978,9 +978,11 @@ def offline_sync_photo():
         if lat is not None and lon is not None:
             _stamp_photo_with_gps(path, lat, lon, acc, captured)
 
+        remark = (request.form.get('remark') or '').strip() or None
         ph = AuditResponsePhoto(audit_response_id=resp.id, file_path=rel_path,
                                 latitude=lat, longitude=lon, gps_accuracy=acc,
-                                captured_at=captured or datetime.now(timezone.utc).replace(tzinfo=None))
+                                captured_at=captured or datetime.now(timezone.utc).replace(tzinfo=None),
+                                remark=remark)
         session.add(ph)
         session.commit()
         return jsonify({'ok': True, 'photo_id': str(ph.id)})

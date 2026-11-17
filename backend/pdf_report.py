@@ -208,7 +208,11 @@ def _photo_evidence(session, responses, content_width, st):
         for photo in _get_response_photos(session, resp.id):
             image = _make_photo_image(photo)
             if image is not None:
-                items.append((image, safe(question.question_text, 'Inspection Point')))
+                caption = safe(question.question_text, 'Inspection Point')
+                remark_text = (getattr(photo, 'remark', None) or '').strip()
+                if remark_text:
+                    caption = f"{caption} — Remark: {safe(remark_text)}"
+                items.append((image, caption))
 
     if not items:
         return []

@@ -717,6 +717,7 @@ def _observation_json(db, obs, audit):
         'closed_at': _iso_utc(obs.closed_at),
         'closure_photos': [{
             'id': str(p.id), 'kind': p.kind,
+            'remark': getattr(p, 'remark', None) or '',
             'captured_at': _iso_utc(p.captured_at),
             'uploaded_at': _iso_utc(p.uploaded_at),
         } for p in closure_photos],
