@@ -942,12 +942,16 @@ def offline_sync_photo():
         rel_path = f'{rel_dir}/{filename}'
         # Also recognize the previous long-path filename format so an upload
         # whose response was lost before this upgrade remains idempotent.
+        remark = (request.form.get('remark') or '').strip() or None
         existing = session.query(AuditResponsePhoto).filter(
             AuditResponsePhoto.audit_response_id == resp.id,
             or_(AuditResponsePhoto.file_path == rel_path,
                 AuditResponsePhoto.file_path.like(f'%photo_{local_photo_uuid}.jpg'))
         ).first()
         if existing:
+            if remark is not None and existing.remark != remark:
+                existing.remark = remark
+                session.commit()
             return jsonify({'ok': True, 'duplicate': True, 'photo_id': str(existing.id)})
 
         folder = os.path.join(UPLOAD_FOLDER, *rel_dir.split('/'))
@@ -978,7 +982,6 @@ def offline_sync_photo():
         if lat is not None and lon is not None:
             _stamp_photo_with_gps(path, lat, lon, acc, captured)
 
-        remark = (request.form.get('remark') or '').strip() or None
         ph = AuditResponsePhoto(audit_response_id=resp.id, file_path=rel_path,
                                 latitude=lat, longitude=lon, gps_accuracy=acc,
                                 captured_at=captured or datetime.now(timezone.utc).replace(tzinfo=None),
