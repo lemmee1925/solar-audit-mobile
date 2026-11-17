@@ -1472,6 +1472,12 @@ def users_edit(user_id):
             
             if password:
                 user.password_hash = generate_password_hash(password)
+            if password or not is_active:
+                from models import MobileAPIToken
+                session.query(MobileAPIToken).filter(
+                    MobileAPIToken.user_id == str(user.id),
+                    MobileAPIToken.revoked_at.is_(None),
+                ).update({'revoked_at': datetime.now(timezone.utc).replace(tzinfo=None)})
 
             # Replace this user's plant assignments with whatever was
             # checked. Admins are always unrestricted regardless of any
