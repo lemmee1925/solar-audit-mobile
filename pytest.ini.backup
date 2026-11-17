@@ -1,4 +1,0 @@
-﻿[pytest]
-pythonpath = backend
-testpaths = tests backend/tests
-python_files = test_*.py
