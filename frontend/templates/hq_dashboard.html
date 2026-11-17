@@ -44,9 +44,15 @@
       <h2 style="margin-top:0;">Active sites ({{ sites|length }})</h2>
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem;">
         {% for site in sites %}
+          {% set m = site_metrics.get(site.site_id, {'plants': 0, 'audits': 0, 'open_obs': 0}) if site_metrics is defined else {'plants': 0, 'audits': 0, 'open_obs': 0} %}
           <div style="border:1px solid var(--border, #dbe2ea); border-radius:12px; padding:1rem;">
             <h3 style="margin:.1rem 0 .4rem;">{{ site.site_name }}</h3>
-            <p style="margin:0 0 1rem; color:var(--muted, #64748b);">Site ID: {{ site.site_id }}</p>
+            <p style="margin:0 0 .6rem; color:var(--muted, #64748b);">Site ID: {{ site.site_id }}</p>
+            <div style="display:flex; gap:.75rem; flex-wrap:wrap; font-size:.82rem; color:var(--muted, #475569); margin-bottom:1rem;">
+              <span><b>{{ m.plants }}</b> plant(s)</span>
+              <span><b>{{ m.audits }}</b> audit(s)</span>
+              <span><b>{{ m.open_obs }}</b> open obs</span>
+            </div>
             <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
               <form method="post" action="{{ url_for('switch_site', site_id=site.site_id) }}">
                 <button class="btn btn-primary" type="submit">Open site</button>

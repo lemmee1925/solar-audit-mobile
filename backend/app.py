@@ -1165,8 +1165,46 @@ def hq_dashboard():
         if org_id:
             inactive_q = inactive_q.filter(Site.organization_id == org_id)
         inactive_sites = inactive_q.order_by(Site.site_name).all()
+        site_ids = [s.site_id for s in active_sites]
+        plant_counts = {}
+        audit_counts = {}
+        open_obs_counts = {}
+        if site_ids:
+            plant_counts = dict(
+                db.query(Plant.site_id, func.count(Plant.id))
+                .filter(Plant.site_id.in_(site_ids))
+                .group_by(Plant.site_id).all()
+            )
+            audit_counts = dict(
+                db.query(Audit.site_id, func.count(Audit.id))
+                .filter(Audit.site_id.in_(site_ids), Audit.is_deleted == False)
+                .group_by(Audit.site_id).all()
+            )
+            open_obs_counts = dict(
+                db.query(Observation.site_id, func.count(Observation.id))
+                .join(Audit, Observation.audit_id == Audit.id)
+                .filter(
+                    Observation.site_id.in_(site_ids),
+                    Audit.is_deleted == False,
+                    Observation.status.in_(UNFINISHED),
+                )
+                .group_by(Observation.site_id).all()
+            )
+        site_metrics = {
+            sid: {
+                'plants': int(plant_counts.get(sid, 0)),
+                'audits': int(audit_counts.get(sid, 0)),
+                'open_obs': int(open_obs_counts.get(sid, 0)),
+            }
+            for sid in site_ids
+        }
         resp = app.make_response(
-            render_template('hq_dashboard.html', sites=active_sites, inactive_sites=inactive_sites)
+            render_template(
+                'hq_dashboard.html',
+                sites=active_sites,
+                inactive_sites=inactive_sites,
+                site_metrics=site_metrics,
+            )
         )
         resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
         return resp
