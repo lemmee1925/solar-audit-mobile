@@ -208,11 +208,18 @@ def _photo_evidence(session, responses, content_width, st):
         for photo in _get_response_photos(session, resp.id):
             image = _make_photo_image(photo)
             if image is not None:
-                caption = safe(question.question_text, 'Inspection Point')
+                caption_parts = [f"<b>Inspection Evidence</b><br/>{safe(question.question_text, 'Inspection Point')}"]
                 remark_text = (getattr(photo, 'remark', None) or '').strip()
                 if remark_text:
-                    caption = f"{caption} — Remark: {safe(remark_text)}"
-                items.append((image, caption))
+                    caption_parts.append(f"<br/><b>Remark: {safe(remark_text)}</b>")
+                lat = getattr(photo, 'latitude', None)
+                lon = getattr(photo, 'longitude', None)
+                if lat is not None and lon is not None:
+                    maps_url = f"https://www.google.com/maps/search/?api=1&amp;query={lat:.6f},{lon:.6f}"
+                    caption_parts.append(
+                        f'<br/><link href="{maps_url}" color="#15803D"><u>GPS: {lat:.5f}, {lon:.5f} (Open in Maps)</u></link>'
+                    )
+                items.append((image, ''.join(caption_parts)))
 
     if not items:
         return []
@@ -234,14 +241,11 @@ def _photo_evidence(session, responses, content_width, st):
     for i in range(0, len(items), 2):
         pair = items[i:i + 2]
         cells = []
-        for image, question_text in pair:
+        for image, caption_html in pair:
             cells.append([
                 image,
                 Spacer(1, 2),
-                Paragraph(
-                    f'<b>Inspection Evidence</b><br/>{question_text}',
-                    st['small']
-                )
+                Paragraph(caption_html, st['small'])
             ])
         while len(cells) < 2:
             cells.append('')
