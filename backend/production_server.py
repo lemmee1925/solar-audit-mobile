@@ -31,6 +31,8 @@ def _truthy(value):
 
 if not _truthy(os.environ.get("CENTRAL_MODE")):
     raise SystemExit("CENTRAL_MODE=1 is required for the production server.")
+if not os.environ.get("DATABASE_URL", "").startswith("postgresql"):
+    raise SystemExit("DATABASE_URL must be a PostgreSQL URL (postgresql+psycopg://...) for production.")
 if not os.environ.get("SECRET_KEY"):
     raise SystemExit("SECRET_KEY is required for production.")
 if _truthy(os.environ.get("MOBILE_API_ENABLED", "1")):

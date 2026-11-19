@@ -1,23 +1,18 @@
-# Solar Audit — Central Deployment Foundation
+# Solar Audit — Central Deployment (Authoritative Production Architecture)
 
-This build now has an additive **central multi-site mode**. The existing local/site mode remains available.
+**Central Multi-Site PostgreSQL Mode** is the **authoritative production architecture** for all multi-user, HQ, and Android mobile deployments.
 
-## Modes
+## Authoritative Production Mode (`production_server.py` / `Dockerfile`)
+- `CENTRAL_MODE=1` (enforced at startup)
+- `DATABASE_URL=postgresql+psycopg://...` (enforced at startup — SQLite is rejected)
+- `SECRET_KEY` and `MOBILE_API_SIGNING_SECRET` are mandatory
+- `sites` registry resolves the authenticated user's site; `/hq` provides multi-site HQ management
+- No `/setup` wizard; `/health` provides the monitoring endpoint
+- Audit number allocation uses a PostgreSQL row-locked counter (`next_audit_number`)
 
-### Local/site mode (existing)
-- `CENTRAL_MODE` unset/false
-- SQLite database
-- `config/site_config.json` selects the site
-- Suitable for standalone site/offline Windows deployment
-
-### Central mode (new foundation)
-- `CENTRAL_MODE=1`
-- PostgreSQL recommended
-- `sites` registry resolves the authenticated user's site
-- No `/setup` wizard
-- `SECRET_KEY` is mandatory
-- `/health` provides a monitoring endpoint
-- Audit number allocation uses a database counter rather than `MAX()+1`
+## Legacy / Dev-Only Mode (`run_prod.py` / `app.py`)
+- `CENTRAL_MODE` unset/false with SQLite database and `config/site_config.json`
+- Retained **only** for local development, isolated tests, or legacy standalone single-laptop installs — **do not use for multi-user production**.
 
 ## Recommended production stack
 

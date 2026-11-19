@@ -46,6 +46,9 @@ if engine.dialect.name == 'sqlite':
 from question_data import SAFETY_SECTION_NAME, CIVIL_SECTION_NAME
 
 app = Flask(__name__, static_folder=str(static_dir()), template_folder=str(templates_dir()))
+if os.environ.get('TRUST_PROXY_HEADERS', '').strip().lower() in {'1', 'true', 'yes', 'on'}:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
  
 # Public, read-only health check for deployment verification.
 # It checks database connectivity only; it does not expose credentials or errors.

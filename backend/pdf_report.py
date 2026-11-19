@@ -178,12 +178,27 @@ def _make_photo_image(photo, max_width=7.0 * cm, max_height=5.0 * cm):
         return None
 
     try:
-        from PIL import Image as PILImage
-        with PILImage.open(path) as pil_img:
-            width_px, height_px = pil_img.size
+        import io
+        from PIL import Image as PILImage, ImageOps
 
-        if width_px <= 0 or height_px <= 0:
-            return None
+        with PILImage.open(path) as raw_img:
+            pil_img = ImageOps.exif_transpose(raw_img)
+            width_px, height_px = pil_img.size
+            if width_px <= 0 or height_px <= 0:
+                return None
+
+            # Downscale oversized phone photos so 50+ photo PDFs stay fast and compact.
+            max_edge = 1200
+            if max(width_px, height_px) > max_edge:
+                pil_img.thumbnail((max_edge, max_edge), PILImage.Resampling.LANCZOS)
+                width_px, height_px = pil_img.size
+
+            if pil_img.mode not in ('RGB', 'L'):
+                pil_img = pil_img.convert('RGB')
+
+            buf = io.BytesIO()
+            pil_img.save(buf, format='JPEG', quality=82, optimize=True)
+            buf.seek(0)
 
         scale = min(
             max_width / float(width_px),
@@ -191,7 +206,7 @@ def _make_photo_image(photo, max_width=7.0 * cm, max_height=5.0 * cm):
             1.0,
         )
         return Image(
-            path,
+            buf,
             width=width_px * scale,
             height=height_px * scale,
             hAlign='CENTER',

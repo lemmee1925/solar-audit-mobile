@@ -1,4 +1,12 @@
-# Solar Audit Platform — Offline Site Edition
+# Solar Audit Platform
+
+> **Authoritative Production Architecture:** **Central Multi-Site PostgreSQL Mode** (`CENTRAL_MODE=1`, `DATABASE_URL=postgresql+psycopg://...`, served via `backend/production_server.py` or `Dockerfile` on port `8080`) is the **single authoritative production target** for multi-user, HQ, and mobile deployments (see `CENTRAL_DEPLOYMENT.md` and `deployment/azure/README.md`).
+>
+> **Legacy / Dev-Only Mode:** The standalone single-site SQLite desktop/installer sections below (`backend/run_prod.py`, `installer.iss`, `solar_audit.spec`) are retained for offline single-laptop or local dev/testing only and must **not** be used for multi-user production.
+
+---
+
+## Solar Audit Platform — Offline Site Edition (Legacy / Standalone)
 
 An offline, per-site Windows desktop version of the Solar Audit Platform. Each
 installed copy runs entirely on the site laptop — no internet, no cloud

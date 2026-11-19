@@ -1,4 +1,12 @@
-# Architecture — Offline Site Edition
+# Architecture
+
+> **Authoritative Production Architecture:** Production deployments use **Central Multi-Site PostgreSQL Mode** (`CENTRAL_MODE=1`, `DATABASE_URL=postgresql+psycopg://...`, `backend/production_server.py` / `Dockerfile`) with Waitress WSGI (`24` threads) and PostgreSQL connection pooling (`pool_size=20`, `max_overflow=30`). See `CENTRAL_DEPLOYMENT.md` and `deployment/azure/README.md`.
+>
+> The "Offline Site Edition" (SQLite) documentation below describes the legacy standalone single-laptop mode and local test fallback.
+
+---
+
+# Architecture — Offline Site Edition (Legacy / Standalone)
 
 ## 1. Overview
 
