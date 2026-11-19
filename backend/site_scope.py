@@ -319,6 +319,19 @@ def valid_date(v):
 # ---------------------------------------------------------------------------
 # Creation / sync from checkpoint responses (called while the audit is a draft)
 # ---------------------------------------------------------------------------
+OFI_CATEGORIES = {
+    'safety': 'Safety',
+    'profitability': 'Profitability',
+    'reliability': 'Reliability',
+    'aesthetic': 'Aesthetic',
+}
+
+
+def normalize_ofi_category(value):
+    key = str(value or '').strip().lower()
+    return OFI_CATEGORIES.get(key)
+
+
 def sync_observation(session, audit, response, site_id, actor, fields):
     """
     Keep an Observation in step with a checkpoint response.
@@ -348,6 +361,13 @@ def sync_observation(session, audit, response, site_id, actor, fields):
         obs.status = 'open'
         obs_log(session, obs, 'restored', actor, 'Checkpoint finding restored.', 'withdrawn', 'open')
     obs.finding_type = 'OFI' if status == 'ofi' else 'NC'
+    if status == 'ofi':
+        if 'ofi_category' in fields:
+            obs.ofi_category = normalize_ofi_category(fields.get('ofi_category'))
+        elif getattr(response, 'ofi_category', None):
+            obs.ofi_category = normalize_ofi_category(response.ofi_category)
+    else:
+        obs.ofi_category = None
 
     if fields.get('observation') is not None:
         incoming_obs = _clean(fields['observation'])

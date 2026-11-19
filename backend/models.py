@@ -347,6 +347,7 @@ class AuditResponse(Base):
     asset_id = Column(String(36), ForeignKey('assets.id'))
     question_id = Column(Integer, ForeignKey('audit_questions.id'))
     response_status = Column(String(50))
+    ofi_category = Column(String(30))         # Safety | Profitability | Reliability | Aesthetic
     remarks = Column(Text)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime)
@@ -401,6 +402,7 @@ class Observation(Base):
     target_date = Column(String(20))          # YYYY-MM-DD
     remarks = Column(Text)
     finding_type = Column(String(10), nullable=False, default='NC')  # NC | OFI
+    ofi_category = Column(String(30))         # Safety | Profitability | Reliability | Aesthetic
     action_taken = Column(Text)
     closure_date = Column(String(20))         # date the owner reports the fix done
     reviewer_comments = Column(Text)
@@ -509,9 +511,10 @@ def _ensure_checklist_versioning_columns():
         'submitted_at': 'DATETIME', 'compliance_pct': 'FLOAT', 'score_pct': 'FLOAT',
         'site_rating': 'VARCHAR(50)', 'score_detail': 'TEXT',
     })
-    _ensure_columns('audit_responses', {'updated_at': 'DATETIME', 'responded_by': 'VARCHAR(200)'})
+    _ensure_columns('audit_responses', {'updated_at': 'DATETIME', 'responded_by': 'VARCHAR(200)', 'ofi_category': 'VARCHAR(30)'})
     _ensure_columns('observations', {
         "finding_type": "VARCHAR(10) NOT NULL DEFAULT 'NC'",
+        "ofi_category": "VARCHAR(30)",
     })
     _ensure_columns('users', {
         'organization_id': 'VARCHAR(36)',

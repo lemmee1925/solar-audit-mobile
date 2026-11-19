@@ -54,6 +54,19 @@
   </form>
 </div>
 
+{% if central_mode %}
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Central Database Backups</h2>
+  </div>
+  <p class="page-sub">
+    This installation runs in <strong>Central Multi-Site PostgreSQL</strong> mode.
+    Database backups are managed on the server/PostgreSQL host (for example via
+    <code>deployment/windows/backup/backup_postgres.ps1</code> or Azure PostgreSQL automated backups)
+    rather than per-site ZIP exports.
+  </p>
+</div>
+{% else %}
 <div class="card">
   <div class="card-header">
     <h2 class="card-title">Backup</h2>
@@ -100,5 +113,6 @@
     <button type="submit" class="btn btn-danger">♻ Restore From Backup</button>
   </form>
 </div>
+{% endif %}
 
 {% endblock %}

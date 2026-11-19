@@ -702,6 +702,7 @@ def _observation_json(db, obs, audit):
         'checkpoint_text': question.question_text if question else '',
         'response_status': response.response_status if response else None,
         'finding_type': ('OFI' if response and (response.response_status or '').lower() == 'ofi' else (obs.finding_type or 'NC')).upper(),
+        'ofi_category': (obs.ofi_category or (response.ofi_category if response else '') or ''),
         'observation': obs.observation or '', 'severity': obs.severity or '',
         'responsible_person': obs.responsible_person or '',
         'target_date': obs.target_date or '', 'remarks': obs.remarks or '',

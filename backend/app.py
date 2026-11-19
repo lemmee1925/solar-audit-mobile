@@ -857,13 +857,16 @@ def offline_sync_audit():
                 resp = AuditResponse(audit_id=audit.id, asset_id=asset_id,
                                      question_id=qid, response_status=status)
                 session.add(resp)
+            from site_scope import normalize_ofi_category
             resp.response_status = status
+            resp.ofi_category = normalize_ofi_category(r.get('ofi_category')) if status == 'ofi' else None
             resp.remarks = r.get('remarks') or ''
             resp.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             resp.responded_by = _actor()
             session.flush()
             sync_observation(session, audit, resp, site.site_id, _actor(), {
                 'observation': r.get('observation'),
+                'ofi_category': resp.ofi_category,
                 'severity': None,  # offline checkpoints no longer classify severity during audit
                 'responsible_person': None,
                 'target_date': None,

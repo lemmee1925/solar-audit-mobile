@@ -6,18 +6,35 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">About</h1>
-    <p class="page-sub">Solar Audit Platform — offline site edition</p>
+    <p class="page-sub">{% if central_mode %}Solar Audit Platform — Central Multi-Site Edition{% else %}Solar Audit
+      Platform — offline site edition{% endif %}</p>
   </div>
 </div>
 
 <div class="card">
   <table>
     <tbody>
-      <tr><td><strong>Application Version</strong></td><td>{{ app_version }}</td></tr>
-      <tr><td><strong>Export Schema Version</strong></td><td>{{ schema_version }}</td></tr>
-      <tr><td><strong>Site ID</strong></td><td>{{ site.site_id }}</td></tr>
-      <tr><td><strong>Site Name</strong></td><td>{{ site.site_name }}</td></tr>
-      <tr><td><strong>Mode</strong></td><td>Offline (local SQLite, no internet required)</td></tr>
+      <tr>
+        <td><strong>Application Version</strong></td>
+        <td>{{ app_version }}</td>
+      </tr>
+      <tr>
+        <td><strong>Export Schema Version</strong></td>
+        <td>{{ schema_version }}</td>
+      </tr>
+      <tr>
+        <td><strong>Site ID</strong></td>
+        <td>{{ site.site_id }}</td>
+      </tr>
+      <tr>
+        <td><strong>Site Name</strong></td>
+        <td>{{ site.site_name }}</td>
+      </tr>
+      <tr>
+        <td><strong>Mode</strong></td>
+        <td>{% if central_mode %}Central Multi-Site (PostgreSQL){% else %}Offline (local SQLite, no internet required){%
+          endif %}</td>
+      </tr>
     </tbody>
   </table>
   <p class="page-sub" style="margin-top:16px;">

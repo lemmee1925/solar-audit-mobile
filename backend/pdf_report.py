@@ -481,16 +481,19 @@ def generate_pdf(audit_id_str, site_id=None):
 
         elements.append(PageBreak())
 
+        next_sec_num = 4
+
         # ------------------------------------------------------------------
-        # SAFETY AUDIT
+        # SAFETY AUDIT (only when answered in this audit)
         # ------------------------------------------------------------------
-        elements += section_heading('04','Safety Audit','Site-level safety checkpoints (not tied to a single equipment item).',st)
         safety_rows=(session.query(AuditResponse,AuditQuestion,AuditSection)
                      .join(AuditQuestion,AuditResponse.question_id==AuditQuestion.id)
                      .join(AuditSection,AuditQuestion.section_id==AuditSection.id)
                      .filter(AuditResponse.audit_id==audit.id,AuditResponse.asset_id.is_(None),AuditSection.name==SAFETY_SECTION_NAME)
                      .order_by(AuditQuestion.question_order,AuditQuestion.id).all())
         if safety_rows:
+            elements += section_heading(f'{next_sec_num:02d}','Safety Audit','Site-level safety checkpoints (not tied to a single equipment item).',st)
+            next_sec_num += 1
             rows=[[Paragraph('#',st['header']),Paragraph('Safety Checkpoint',st['header']),Paragraph('Result',st['header']),Paragraph('Remarks',st['header'])]]
             for i,(resp,q,sec) in enumerate(safety_rows,1):
                 stt=(resp.response_status or '').lower()
@@ -502,19 +505,18 @@ def generate_pdf(audit_id_str, site_id=None):
             elements.append(sft)
             elements.extend(_photo_evidence(session, safety_rows, content_width, st))
             elements.append(PageBreak())
-        else:
-            elements += [Paragraph('No safety checkpoints were answered for this audit.',st['body']), Spacer(1,0.8*cm)]
 
         # ------------------------------------------------------------------
-        # CIVIL / INFRASTRUCTURE AUDIT
+        # CIVIL / INFRASTRUCTURE AUDIT (only when answered in this audit)
         # ------------------------------------------------------------------
-        elements += section_heading('05','Civil / Infrastructure Audit','Site-level civil and infrastructure checkpoints.',st)
         civil_rows=(session.query(AuditResponse,AuditQuestion,AuditSection)
                      .join(AuditQuestion,AuditResponse.question_id==AuditQuestion.id)
                      .join(AuditSection,AuditQuestion.section_id==AuditSection.id)
                      .filter(AuditResponse.audit_id==audit.id,AuditResponse.asset_id.is_(None),AuditSection.name==CIVIL_SECTION_NAME)
                      .order_by(AuditQuestion.question_order,AuditQuestion.id).all())
         if civil_rows:
+            elements += section_heading(f'{next_sec_num:02d}','Civil / Infrastructure Audit','Site-level civil and infrastructure checkpoints.',st)
+            next_sec_num += 1
             rows=[[Paragraph('#',st['header']),Paragraph('Civil / Infrastructure Checkpoint',st['header']),Paragraph('Result',st['header']),Paragraph('Remarks',st['header'])]]
             for i,(resp,q,sec) in enumerate(civil_rows,1):
                 stt=(resp.response_status or '').lower()
@@ -526,13 +528,11 @@ def generate_pdf(audit_id_str, site_id=None):
             elements.append(cvt)
             elements.extend(_photo_evidence(session, civil_rows, content_width, st))
             elements.append(PageBreak())
-        else:
-            elements += [Paragraph('No Civil / Infrastructure checkpoints were answered for this audit.',st['body']), Spacer(1,0.8*cm)]
 
         # ------------------------------------------------------------------
         # OBSERVATION REGISTER
         # ------------------------------------------------------------------
-        elements += section_heading('06','Observations & Closure Tracking','Every NC and OFI finding, with severity, owner, target date and current closure status.',st)
+        elements += section_heading(f'{next_sec_num:02d}','Observations & Closure Tracking','Every NC and OFI finding, with severity, owner, target date and current closure status.',st)
         reg=(session.query(Observation,AuditResponse,AuditQuestion,Asset)
              .join(AuditResponse,Observation.audit_response_id==AuditResponse.id)
              .join(AuditQuestion,AuditResponse.question_id==AuditQuestion.id)

@@ -1339,9 +1339,6 @@
       <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
         <span class="icon">◆</span> Overview
       </a>
-      <a href="{{ url_for('mobile_home') }}" class="nav-link {% if request.endpoint=='mobile_home' %}active{% endif %}">
-        <span class="icon">▣</span> Mobile Audit
-      </a>
       <a href="{{ url_for('audit_new') }}"
         class="nav-link {% if request.endpoint in ['audit_new','audit_new_post','audit_site','audit_site_post','audit_equipment','audit_equipment_save','audit_safety','audit_safety_save','audit_civil','audit_civil_save','audit_submit','audit_submit_post'] %}active{% endif %}">
         <span class="icon">＋</span> New Audit
@@ -1403,7 +1400,7 @@
         <span class="topbar-status"><span class="topbar-status-dot"></span> Audit workspace ready</span>
         <a class="topbar-icon" href="{{ url_for('observations_list') }}" aria-label="Open observations"
           title="Observations">🔔{% if obs_notification_count is defined and obs_notification_count %}<span
-            class="dot"></span>{% else %}<span class="dot"></span>{% endif %}</a>
+            class="dot"></span>{% endif %}</a>
         <div class="topbar-menu-wrap">
           <button type="button" class="topbar-avatar" id="profileMenuButton" aria-label="Open account menu"
             aria-expanded="false">{{ (current_user.full_name or current_user.username or '?')[0]|upper }}</button>
