@@ -838,6 +838,7 @@ def offline_sync_audit():
 
         # Upsert responses and observations. Foreign question IDs are rejected
         # rather than silently creating corrupt cross-type responses.
+        question_map = {}
         for r in payload.get('responses') or []:
             try: qid = int(r.get('question_id'))
             except Exception: continue
@@ -850,6 +851,7 @@ def offline_sync_audit():
                 continue
             if not asset_id and aref not in ('', 'Site Safety', 'Civil / Infrastructure'):
                 continue
+            question_map[f"{aref}::{q.question_text.strip()}"] = qid
             status = str(r.get('response_status') or 'na').lower()
             if status not in VALID_RESPONSES: continue
             resp = _get_response(session, audit.id, asset_id, qid)
@@ -875,7 +877,7 @@ def offline_sync_audit():
         session.commit()
         return jsonify({'ok': True, 'local_uuid': local_uuid,
                         'audit_id': str(audit.id), 'audit_number': audit.audit_number,
-                        'status': audit.status, 'asset_map': asset_map})
+                        'status': audit.status, 'asset_map': asset_map, 'question_map': question_map})
     except Exception as exc:
         session.rollback()
         return _offline_json_error(f'sync failed: {exc}', 500)

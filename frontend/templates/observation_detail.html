@@ -47,7 +47,7 @@ textarea, input[type=text], input[type=date] { width: 100%; padding: 10px; borde
 <div class="card">
   <div class="card-title" style="margin-bottom:10px;">{{ question.question_text if question }}</div>
   <div class="od-grid">
-    <div class="od-field"><div class="k">Finding type</div><div class="v"><b>{{ obs.finding_type or 'NC' }}</b>{% if (obs.finding_type or 'NC') == 'OFI' %} · Opportunity for Improvement{% else %} · Non-Conformance{% endif %}</div></div>
+    <div class="od-field"><div class="k">Finding type</div><div class="v"><b>{{ obs.finding_type or 'NC' }}</b>{% if (obs.finding_type or 'NC') == 'OFI' %} · Opportunity for Improvement{% if obs.ofi_category %} ({{ obs.ofi_category }}){% endif %}{% else %} · Non-Conformance{% endif %}</div></div>
     <div class="od-field"><div class="k">Status</div><div class="v"><b>{{ obs_display_status(obs) }}</b>{% if obs.reopen_count %} (reopened {{ obs.reopen_count }}×){% endif %}</div></div>
     <div class="od-field"><div class="k">Severity</div><div class="v"><span class="sev-pill {{ obs.severity or 'none' }}">{{ obs.severity|sev_label if obs.severity else 'Not set' }}</span></div></div>
     <div class="od-field"><div class="k">Responsible person / team</div><div class="v">{{ obs.responsible_person or '—' }}</div></div>

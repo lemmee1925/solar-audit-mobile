@@ -585,23 +585,66 @@ def audit_manifest(local_audit_id):
             return _error(f'Unknown backend asset type ID {type_id} for {ref}. Refresh reference data and retry.', 400)
         asset_type_by_ref[ref] = type_id
 
+    created_custom_questions = False
     for index, response in enumerate(responses, start=1):
-        try:
-            question_id = int(response.get('question_id'))
-        except (TypeError, ValueError):
-            return _error(f'Checkpoint response {index} has an invalid question_id.', 400)
-        question = db.query(AuditQuestion).filter_by(id=question_id).first()
-        if not question:
-            return _error(f'Checkpoint response {index} references unknown backend question ID {question_id}. Refresh checklist reference data and retry.', 400)
+        asset_ref = str(response.get('asset_ref') or '').strip()
+        raw_qid = response.get('question_id')
+        custom_text = str(response.get('checkpoint_text') or '').strip()
+        if (raw_qid is None or str(raw_qid).strip() in ('', '0')) and custom_text:
+            if asset_ref not in ('', 'Site Safety', 'Civil / Infrastructure') and asset_ref not in asset_type_by_ref:
+                return _error(f'Checkpoint response {index} refers to missing audit asset {asset_ref}.', 400)
+            target_type_id = None if asset_ref in ('', 'Site Safety', 'Civil / Infrastructure') else asset_type_by_ref[asset_ref]
+            if asset_ref == 'Site Safety':
+                sec = db.query(AuditSection).filter_by(name='Site Safety').first()
+            elif asset_ref == 'Civil / Infrastructure':
+                sec = db.query(AuditSection).filter_by(name='Civil / Infrastructure').first()
+            else:
+                sec = (
+                    db.query(AuditSection)
+                    .join(AuditQuestion, AuditQuestion.section_id == AuditSection.id)
+                    .filter(AuditQuestion.asset_type_id == target_type_id)
+                    .first()
+                ) or db.query(AuditSection).order_by(AuditSection.id.asc()).first()
+            question = (
+                db.query(AuditQuestion)
+                .filter(
+                    AuditQuestion.asset_type_id == target_type_id,
+                    AuditQuestion.question_text == custom_text,
+                )
+                .first()
+            )
+            if not question:
+                question = AuditQuestion(
+                    section_id=sec.id if sec else None,
+                    asset_type_id=target_type_id,
+                    question_text=custom_text,
+                    question_order=9999,
+                    is_active=True,
+                    source='custom_mobile',
+                )
+                db.add(question)
+                db.flush()
+                created_custom_questions = True
+            response['question_id'] = question.id
+        else:
+            try:
+                question_id = int(raw_qid)
+            except (TypeError, ValueError):
+                return _error(f'Checkpoint response {index} has an invalid question_id.', 400)
+            question = db.query(AuditQuestion).filter_by(id=question_id).first()
+            if not question:
+                return _error(f'Checkpoint response {index} references unknown backend question ID {question_id}. Refresh checklist reference data and retry.', 400)
         status = str(response.get('response_status') or '').strip().lower()
         if status not in ('pass', 'fail', 'na', 'ofi'):
             return _error(f'Checkpoint response {index} has unsupported status {status or "(empty)"}.', 400)
-        asset_ref = str(response.get('asset_ref') or '').strip()
         if asset_ref not in ('', 'Site Safety', 'Civil / Infrastructure'):
             if asset_ref not in asset_type_by_ref:
                 return _error(f'Checkpoint response {index} refers to missing audit asset {asset_ref}.', 400)
             if question.asset_type_id is not None and int(question.asset_type_id) != asset_type_by_ref[asset_ref]:
                 return _error(f'Checkpoint response {index} question/type mismatch. Refresh reference data and rebuild the audit checklist.', 400)
+
+    if created_custom_questions:
+        db.commit()
 
     result = _call_legacy_handler('audit')
     # The underlying handler returns a Flask response or (response, status).
@@ -789,6 +832,12 @@ def observation_details(observation_id):
         updates['responsible_person'] = str(payload.get('responsible_person') or '').strip() or None
     if 'target_date' in payload:
         updates['target_date'] = target_date or None
+    if 'ofi_category' in payload and (obs.finding_type or '').upper() == 'OFI':
+        from site_scope import normalize_ofi_category
+        updates['ofi_category'] = normalize_ofi_category(payload.get('ofi_category'))
+        resp_row = db.query(AuditResponse).filter_by(id=obs.audit_response_id).first()
+        if resp_row is not None:
+            resp_row.ofi_category = updates['ofi_category']
     changes = []
     for field, value in updates.items():
         old = getattr(obs, field)

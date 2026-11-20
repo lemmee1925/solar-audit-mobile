@@ -93,9 +93,6 @@
           <label title="Complied" class="btn btn-pass {% if response and response.response_status == 'pass' %}selected{% endif %}">
             <input type="radio" name="response_status_{{ question.id }}" value="pass" {% if response and response.response_status == 'pass' %}checked{% endif %}> C<span class="status-abbr-full">omplied</span>
           </label>
-          <label title="Not Complied" class="btn btn-fail {% if response and response.response_status == 'fail' %}selected{% endif %}">
-            <input type="radio" name="response_status_{{ question.id }}" value="fail" {% if response and response.response_status == 'fail' %}checked{% endif %}> NC<span class="status-abbr-full"> Not Complied</span>
-          </label>
                           <label title="Opportunity for Improvement" class="btn btn-ofi {% if response and response.response_status == 'ofi' %}selected{% endif %}">
                   <input type="radio" name="response_status_{{ question.id }}" value="ofi" {% if response and response.response_status == 'ofi' %}checked{% endif %}> OFI<span class="status-abbr-full"> Opportunity for Improvement</span>
                 </label>

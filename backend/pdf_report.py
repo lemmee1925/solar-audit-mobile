@@ -44,8 +44,11 @@ WHITE = colors.white
 RESP_LABEL = {'pass': 'Complied', 'fail': 'Not Complied', 'na': 'N/A', 'ofi': 'Opportunity for Improvement'}
 
 
-def resp_label(status):
-    return RESP_LABEL.get((status or 'na').lower(), 'N/A')
+def resp_label(status, ofi_category=None):
+    base = RESP_LABEL.get((status or 'na').lower(), 'N/A')
+    if (status or '').lower() == 'ofi' and ofi_category:
+        return f'{base} ({ofi_category})'
+    return base
 
 
 def sev_color(sev):
@@ -464,7 +467,7 @@ def generate_pdf(audit_id_str, site_id=None):
                 for i,(resp,q,sec) in enumerate(responses,1):
                     if sec.name!=last:
                         rows.append(['',Paragraph(f'<b>{safe(sec.name)}</b>',ParagraphStyle(f'grp{idx}_{i}',fontSize=7,textColor=GREEN_DARK,fontName='Helvetica-Bold')),'','']); last=sec.name
-                    rows.append([Paragraph(str(i),st['small']),Paragraph(safe(q.question_text),st['small']),Paragraph(resp_label(resp.response_status),ParagraphStyle(f's{idx}_{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if (resp.response_status or '').lower()=='pass' else RED if (resp.response_status or '').lower()=='fail' else GRAY),alignment=TA_CENTER)),Paragraph(safe(resp.remarks,''),st['small'])])
+                    rows.append([Paragraph(str(i),st['small']),Paragraph(safe(q.question_text),st['small']),Paragraph(resp_label(resp.response_status, getattr(resp, 'ofi_category', None)),ParagraphStyle(f's{idx}_{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if (resp.response_status or '').lower()=='pass' else RED if (resp.response_status or '').lower()=='fail' else GRAY),alignment=TA_CENTER)),Paragraph(safe(resp.remarks,''),st['small'])])
                 qt=Table(rows,colWidths=[0.55*cm,8.2*cm,2.3*cm,content_width-11.05*cm],repeatRows=1)
                 qt.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY_2),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,HexColor('#FAFBFC')]),('BOX',(0,0),(-1,-1),0.45,BORDER),('INNERGRID',(0,0),(-1,-1),0.3,BORDER),('VALIGN',(0,0),(-1,-1),'TOP'),('ALIGN',(0,1),(0,-1),'CENTER'),('ALIGN',(2,1),(2,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3)]))
                 # Highlight section rows and span their cells.
@@ -498,7 +501,7 @@ def generate_pdf(audit_id_str, site_id=None):
             for i,(resp,q,sec) in enumerate(safety_rows,1):
                 stt=(resp.response_status or '').lower()
                 rows.append([Paragraph(str(i),st['small']),Paragraph(safe(q.question_text),st['small']),
-                             Paragraph(resp_label(stt),ParagraphStyle(f'sf{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if stt=='pass' else RED if stt=='fail' else GRAY),alignment=TA_CENTER)),
+                             Paragraph(resp_label(stt, getattr(resp, 'ofi_category', None)),ParagraphStyle(f'sf{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if stt=='pass' else RED if stt=='fail' else GRAY),alignment=TA_CENTER)),
                              Paragraph(safe(resp.remarks,''),st['small'])])
             sft=Table(rows,colWidths=[0.55*cm,8.2*cm,2.3*cm,content_width-11.05*cm],repeatRows=1)
             sft.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY_2),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,HexColor('#FAFBFC')]),('BOX',(0,0),(-1,-1),0.45,BORDER),('INNERGRID',(0,0),(-1,-1),0.3,BORDER),('VALIGN',(0,0),(-1,-1),'TOP'),('ALIGN',(0,1),(0,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3)]))
@@ -521,7 +524,7 @@ def generate_pdf(audit_id_str, site_id=None):
             for i,(resp,q,sec) in enumerate(civil_rows,1):
                 stt=(resp.response_status or '').lower()
                 rows.append([Paragraph(str(i),st['small']),Paragraph(safe(q.question_text),st['small']),
-                             Paragraph(resp_label(stt),ParagraphStyle(f'sf{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if stt=='pass' else RED if stt=='fail' else GRAY),alignment=TA_CENTER)),
+                             Paragraph(resp_label(stt, getattr(resp, 'ofi_category', None)),ParagraphStyle(f'sf{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if stt=='pass' else RED if stt=='fail' else GRAY),alignment=TA_CENTER)),
                              Paragraph(safe(resp.remarks,''),st['small'])])
             cvt=Table(rows,colWidths=[0.55*cm,8.2*cm,2.3*cm,content_width-11.05*cm],repeatRows=1)
             cvt.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY_2),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,HexColor('#FAFBFC')]),('BOX',(0,0),(-1,-1),0.45,BORDER),('INNERGRID',(0,0),(-1,-1),0.3,BORDER),('VALIGN',(0,0),(-1,-1),'TOP'),('ALIGN',(0,1),(0,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3)]))
@@ -553,8 +556,11 @@ def generate_pdf(audit_id_str, site_id=None):
                 if closure_photo_count: text+=f'<br/><b>Closure evidence:</b> {closure_photo_count} photo(s)'
                 if ob.reviewer_comments: text+=f'<br/><i>Reviewer: {safe(ob.reviewer_comments)}</i>'
                 sc=sev_color(ob.severity)
+                ftype = (ob.finding_type or 'NC').upper()
+                fcat = getattr(ob, 'ofi_category', None) or getattr(resp, 'ofi_category', None)
+                type_text = f'{ftype}<br/><font size="6.5">({safe(fcat)})</font>' if ftype == 'OFI' and fcat else ftype
                 rows.append([Paragraph(str(i),st['small']),
-                             Paragraph((ob.finding_type or 'NC').upper(),st['small']),
+                             Paragraph(type_text,st['small']),
                              Paragraph(f'<b>{safe(asset.asset_name if asset else "Safety")}</b><br/>{safe(q.question_text)}',st['small']),
                              Paragraph(text,st['small']),
                              Paragraph(SEVERITY_LABELS.get(ob.severity,'Not set').upper(),ParagraphStyle(f'sv{i}',fontSize=7,fontName='Helvetica-Bold',textColor=sc,alignment=TA_CENTER)),

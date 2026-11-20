@@ -3,59 +3,61 @@
 
 {% block extra_style %}
 #equipment_select, #equipment_select option, #equipment_select optgroup {
-  background-image: none !important;
+background-image: none !important;
 }
 #equipment_select {
-  background-image: none !important;
-  background-repeat: no-repeat !important;
+background-image: none !important;
+background-repeat: no-repeat !important;
 }
 #equipment_select img { display: none !important; }
 
 select {
-  padding: 8px 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  font-size: 13px;
-  color: var(--ink);
-  background: var(--surface);
-  width: 100%;
-  font-family: sans-serif;
+padding: 8px 10px;
+border: 1px solid var(--line-strong);
+border-radius: 6px;
+font-size: 13px;
+color: var(--ink);
+background: var(--surface);
+width: 100%;
+font-family: sans-serif;
 }
 select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+outline: none;
+border-color: var(--accent);
+box-shadow: 0 0 0 3px var(--accent-soft);
 }
 input[type="text"], input[type="email"], textarea {
-  padding: 8px 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  font-size: 13px;
-  color: var(--ink);
-  background: var(--surface);
-  width: 100%;
-  font-family: sans-serif;
+padding: 8px 10px;
+border: 1px solid var(--line-strong);
+border-radius: 6px;
+font-size: 13px;
+color: var(--ink);
+background: var(--surface);
+width: 100%;
+font-family: sans-serif;
 }
 input[type="text"]:focus, textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+outline: none;
+border-color: var(--accent);
+box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /* ---- Compact question rows ---- */
 .q-section { margin-top: 14px; }
 .q-section-name { font-family: sans-serif; font-size: 10.5px; font-weight: 500; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
 .q-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
 .q-row { display: grid; grid-template-columns: minmax(0, 1.18fr) 280px 155px 120px; gap: 10px; align-items: center;
-  padding: 8px 10px; border-bottom: 1px solid var(--line); }
+padding: 8px 10px; border-bottom: 1px solid var(--line); }
 .q-list .q-row:last-child { border-bottom: none; }
 .q-row:hover { background: var(--bg); }
 .q-text { font-size: 12.5px; color: var(--ink); line-height: 1.35; }
 
 .q-toggle.toggle-group { display: flex; gap: 3px; flex-wrap: nowrap; }
-.q-toggle label.btn { flex: none; padding: 4px 8px; font-size: 11px; border-radius: 5px; min-width: 30px; text-align: center; }
-.q-toggle .btn-pass.selected, .q-toggle .btn-fail.selected, .q-toggle .btn-ofi.selected, .q-toggle .btn-na.selected { font-weight: 700; }
+.q-toggle label.btn { flex: none; padding: 4px 8px; font-size: 11px; border-radius: 5px; min-width: 30px; text-align:
+center; }
+.q-toggle .btn-pass.selected, .q-toggle .btn-fail.selected, .q-toggle .btn-ofi.selected, .q-toggle .btn-na.selected {
+font-weight: 700; }
 
 .q-remarks { padding: 5px 8px !important; font-size: 12px !important; }
 
@@ -64,15 +66,15 @@ input[type="text"]:focus, textarea:focus {
 .q-photos { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .q-photo-thumb-wrap { position: relative; width: 30px; height: 30px; flex: none; }
 .q-photo-thumb { display: block; width: 30px; height: 30px; border-radius: 6px; overflow: hidden;
-  border: 1px solid var(--line-strong); }
+border: 1px solid var(--line-strong); }
 .q-photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .q-photo-del { position: absolute; top: -6px; right: -6px; width: 15px; height: 15px; line-height: 13px;
-  border-radius: 50%; border: 1px solid var(--critical); background: var(--surface); color: var(--critical);
-  font-size: 11px; cursor: pointer; padding: 0; text-align: center; }
+border-radius: 50%; border: 1px solid var(--critical); background: var(--surface); color: var(--critical);
+font-size: 11px; cursor: pointer; padding: 0; text-align: center; }
 .q-photo-del:hover { background: var(--critical); color: #fff; }
 .q-photo-add { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
-  flex: none; border: 1px dashed var(--line-strong); border-radius: 6px; cursor: pointer; font-size: 15px;
-  color: var(--ink-3); background: var(--surface); }
+flex: none; border: 1px dashed var(--line-strong); border-radius: 6px; cursor: pointer; font-size: 15px;
+color: var(--ink-3); background: var(--surface); }
 .q-photo-add:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
 .q-photo-empty { color: var(--ink-3); font-size: 12px; text-align: center; }
 
@@ -85,25 +87,27 @@ input[type="text"]:focus, textarea:focus {
 .q-remarks-view { font-size: 12px; color: var(--ink-2); }
 
 @media (max-width: 900px) {
-  .q-row, .q-row-view { grid-template-columns: 1fr; gap: 6px; padding: 10px; }
-  .q-toggle.toggle-group { flex-wrap: wrap; }
+.q-row, .q-row-view { grid-template-columns: 1fr; gap: 6px; padding: 10px; }
+.q-toggle.toggle-group { flex-wrap: wrap; }
 }
 
 @media (max-width: 700px) {
-  .q-section { margin-top:18px; }
-  .q-section-name { font-size:11px; margin:0 2px 8px; }
-  .q-list { border:none; background:transparent; overflow:visible; }
-  .q-row { display:flex; flex-direction:column; align-items:stretch; gap:10px; padding:14px; margin-bottom:10px; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:0 2px 8px rgba(0,0,0,.03); }
-  .q-text { font-size:14px; line-height:1.45; font-weight:600; }
-  .q-toggle.toggle-group { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
-  .q-toggle label.btn { min-width:0; min-height:44px; padding:11px 6px; font-size:13px; border-radius:9px; }
-  .q-remarks { min-height:44px !important; }
-  .q-photos { min-height:48px; padding:2px 0; gap:7px; }
-  .q-photo-thumb-wrap, .q-photo-thumb { width:54px; height:54px; }
-  .q-photo-add { width:54px; height:54px; border-radius:10px; font-size:24px; }
-  .q-photo-gps { font-size:11px; color:var(--ink-3); }
-  .mobile-save-bar { position:sticky; bottom:70px; z-index:60; margin:12px -2px 0; padding:8px; background:rgba(245,244,239,.95); backdrop-filter:blur(8px); border:1px solid var(--line); border-radius:12px; }
-  .mobile-save-bar .btn { width:100%; justify-content:center; }
+.q-section { margin-top:18px; }
+.q-section-name { font-size:11px; margin:0 2px 8px; }
+.q-list { border:none; background:transparent; overflow:visible; }
+.q-row { display:flex; flex-direction:column; align-items:stretch; gap:10px; padding:14px; margin-bottom:10px;
+border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:0 2px 8px rgba(0,0,0,.03); }
+.q-text { font-size:14px; line-height:1.45; font-weight:600; }
+.q-toggle.toggle-group { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.q-toggle label.btn { min-width:0; min-height:44px; padding:11px 6px; font-size:13px; border-radius:9px; }
+.q-remarks { min-height:44px !important; }
+.q-photos { min-height:48px; padding:2px 0; gap:7px; }
+.q-photo-thumb-wrap, .q-photo-thumb { width:54px; height:54px; }
+.q-photo-add { width:54px; height:54px; border-radius:10px; font-size:24px; }
+.q-photo-gps { font-size:11px; color:var(--ink-3); }
+.mobile-save-bar { position:sticky; bottom:70px; z-index:60; margin:12px -2px 0; padding:8px;
+background:rgba(245,244,239,.95); backdrop-filter:blur(8px); border:1px solid var(--line); border-radius:12px; }
+.mobile-save-bar .btn { width:100%; justify-content:center; }
 }
 {% endblock %}
 
@@ -115,7 +119,8 @@ input[type="text"]:focus, textarea:focus {
   </div>
   <a href="{{ url_for('audit_submit', audit_id=audit.id) }}" class="btn btn-primary">Review & Submit</a>
 </div>
-<div class="audit-banner">Audit ID: {{ audit.id|string|truncate(8, True, '') }} — Plant: {{ plant.name if plant else 'Unknown' }}</div>
+<div class="audit-banner">Audit ID: {{ audit.id|string|truncate(8, True, '') }} — Plant: {{ plant.name if plant else
+  'Unknown' }}</div>
 <div class="aud-tabs">
   <a href="{{ url_for('audit_equipment', audit_id=audit.id) }}" class="active">Technical</a>
   <a href="{{ url_for('audit_safety', audit_id=audit.id) }}">Safety</a>
@@ -127,7 +132,7 @@ input[type="text"]:focus, textarea:focus {
 
 <div class="card" style="margin-bottom: 24px;">
   <div class="card-title" style="margin-bottom: 16px;">Select Equipment to Inspect</div>
-  
+
   <div style="display: grid; gap: 16px;">
     <!-- Equipment Dropdown -->
     <div class="form-group">
@@ -135,20 +140,21 @@ input[type="text"]:focus, textarea:focus {
       <select id="equipment_select" onchange="selectEquipment(this.value)" {% if readonly %}disabled{% endif %}>
         <option value="">-- Select equipment --</option>
         {% for group in asset_groups %}
-          <optgroup label="{{ group.name }}">
-            {% for asset in group.assets %}
-              <option value="{{ asset.id }}" {% if selected_asset_id == asset.id %}selected{% endif %}>
-                {{ asset.asset_name }}{% if asset.is_saved %} ✓{% endif %}
-              </option>
-            {% endfor %}
-          </optgroup>
+        <optgroup label="{{ group.name }}">
+          {% for asset in group.assets %}
+          <option value="{{ asset.id }}" {% if selected_asset_id==asset.id %}selected{% endif %}>
+            {{ asset.asset_name }}{% if asset.is_saved %} ✓{% endif %}
+          </option>
+          {% endfor %}
+        </optgroup>
         {% endfor %}
       </select>
     </div>
 
     <!-- Add Custom Equipment Form -->
     {% if not readonly %}
-    <div style="padding: 16px; background: var(--brand-green-l); border-radius: 10px; border: 1px solid var(--brand-green);">
+    <div
+      style="padding: 16px; background: var(--brand-green-l); border-radius: 10px; border: 1px solid var(--brand-green);">
       <div style="font-weight: 600; color: var(--brand-green-d); margin-bottom: 12px;">➕ Add Custom Equipment</div>
       <form id="addEquipmentForm" onsubmit="addCustomEquipment(event)">
         <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end;">
@@ -173,442 +179,476 @@ input[type="text"]:focus, textarea:focus {
   </div>
 </div>
 <!-- Inspection Panel -->
-<div class="audit-panel" {% if not selected_asset %}style="display: none;"{% endif %} id="inspectionPanel">
+<div class="audit-panel" {% if not selected_asset %}style="display: none;" {% endif %} id="inspectionPanel">
   {% if selected_asset %}
-    <div class="card-title" style="margin-bottom: 8px;">{{ selected_asset.asset_name }}</div>
-    <div style="color: #6B7280; font-size: 13px; margin-bottom: 16px;">
-      Type: <strong>{{ selected_type_name }}</strong>
-    </div>
-    
-    {% if asset_audit %}
-    <div style="background: var(--green-l); border: 1px solid var(--green); color: #065F46; padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;">
-      ✓ Asset inspection data saved
-    </div>
-    {% endif %}
+  <div class="card-title" style="margin-bottom: 8px;">{{ selected_asset.asset_name }}</div>
+  <div style="color: #6B7280; font-size: 13px; margin-bottom: 16px;">
+    Type: <strong>{{ selected_type_name }}</strong>
+  </div>
 
-    {% if readonly %}
-      <!-- Read-only view -->
-      <div class="field-grid cols-2" style="margin-top: 16px;">
-        <div class="form-group"><label>Location</label><div style="color: #1F2937;">{{ asset_audit.location if asset_audit else 'N/A' }}</div></div>
-        <div class="form-group"><label>Rank</label><div style="color: #1F2937;">{{ asset_audit.rank if asset_audit else 'N/A' }}</div></div>
+  {% if asset_audit %}
+  <div
+    style="background: var(--green-l); border: 1px solid var(--green); color: #065F46; padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;">
+    ✓ Asset inspection data saved
+  </div>
+  {% endif %}
+
+  {% if readonly %}
+  <!-- Read-only view -->
+  <div class="field-grid cols-2" style="margin-top: 16px;">
+    <div class="form-group"><label>Location</label>
+      <div style="color: #1F2937;">{{ asset_audit.location if asset_audit else 'N/A' }}</div>
+    </div>
+    <div class="form-group"><label>Rank</label>
+      <div style="color: #1F2937;">{{ asset_audit.rank if asset_audit else 'N/A' }}</div>
+    </div>
+  </div>
+  <div class="form-group"><label>Audited</label>
+    <div style="color: #1F2937;">{{ 'Yes' if asset_audit and asset_audit.is_audited else 'No' }}</div>
+  </div>
+  <div class="form-group"><label>Observation</label>
+    <div style="color: #1F2937;">{{ asset_audit.observation if asset_audit else 'N/A' }}</div>
+  </div>
+  <div class="form-group"><label>Remarks</label>
+    <div style="color: #1F2937;">{{ asset_audit.remarks if asset_audit else 'N/A' }}</div>
+  </div>
+
+  <div class="section-div">Responses</div>
+  {% for section in grouped_questions %}
+  <div class="q-section">
+    <div class="q-section-name">{{ section.section_name }}</div>
+    <div class="q-list">
+      {% for question in section.questions %}
+      {% set response = responses_map[question.id|string] if question.id|string in responses_map else None %}
+      <div class="q-row q-row-view">
+        <div class="q-text">{{ question.question_text }}</div>
+        <div
+          class="q-status-view status-{{ response.response_status if response and response.response_status in ['pass','fail'] else 'na' }}">
+          {{ (response.response_status if response else 'na')|resp_label }}
+        </div>
+        <div class="q-remarks-view">{{ response.remarks if response and response.remarks else '—' }}</div>
+        <div class="q-photos">
+          {% set qphotos = photos_map[question.id|string] if question.id|string in photos_map else [] %}
+          {% for p in qphotos %}
+          <a href="{{ url_for('uploaded_file', filename=p.file_path) }}" target="_blank" class="q-photo-thumb">
+            <img src="{{ url_for('uploaded_file', filename=p.file_path) }}" alt="Photo">
+          </a>
+          {% else %}
+          <span class="q-photo-empty">—</span>
+          {% endfor %}
+        </div>
+        {% set obs = obs_map[question.id|string] if question.id|string in obs_map else None %}
+        {% if obs %}
+        <div class="nc-panel nc-view">
+          <div><b>Observation:</b> {{ obs.observation or '&mdash;'|safe }}</div>
+          <div>Finding severity, responsibility and target date are managed in Observations after submission.</div>
+          <div><b>Status:</b> {{ obs_display_status(obs) }} &middot; <a
+              href="{{ url_for('observation_detail', obs_id=obs.id) }}">Open observation</a></div>
+        </div>
+        {% endif %}
       </div>
-      <div class="form-group"><label>Audited</label><div style="color: #1F2937;">{{ 'Yes' if asset_audit and asset_audit.is_audited else 'No' }}</div></div>
-      <div class="form-group"><label>Observation</label><div style="color: #1F2937;">{{ asset_audit.observation if asset_audit else 'N/A' }}</div></div>
-      <div class="form-group"><label>Remarks</label><div style="color: #1F2937;">{{ asset_audit.remarks if asset_audit else 'N/A' }}</div></div>
-      
-      <div class="section-div">Responses</div>
-      {% for section in grouped_questions %}
-      <div class="q-section">
-        <div class="q-section-name">{{ section.section_name }}</div>
-        <div class="q-list">
-          {% for question in section.questions %}
-          {% set response = responses_map[question.id|string] if question.id|string in responses_map else None %}
-          <div class="q-row q-row-view">
-            <div class="q-text">{{ question.question_text }}</div>
-            <div class="q-status-view status-{{ response.response_status if response and response.response_status in ['pass','fail'] else 'na' }}">
-              {{ (response.response_status if response else 'na')|resp_label }}
-            </div>
-            <div class="q-remarks-view">{{ response.remarks if response and response.remarks else '—' }}</div>
-            <div class="q-photos">
-              {% set qphotos = photos_map[question.id|string] if question.id|string in photos_map else [] %}
-              {% for p in qphotos %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <!-- Edit form -->
+  <form action="{{ url_for('audit_equipment_save', audit_id=audit.id) }}" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="asset_id" value="{{ selected_asset.id }}">
+
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location" value="{{ asset_audit.location if asset_audit else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="rank">Rank</label>
+        <select id="rank" name="rank">
+          {% for option in ['N/A','5','4','3','2','1'] %}
+          <option value="{{ option }}" {% if asset_audit and asset_audit.rank==option %}selected{% endif %}>{{ option }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field-grid cols-2">
+      <div class="form-group">
+        <label>Audited</label>
+        <select name="is_audited">
+          <option value="no" {% if asset_audit and not asset_audit.is_audited %}selected{% endif %}>No</option>
+          <option value="yes" {% if asset_audit and asset_audit.is_audited %}selected{% endif %}>Yes</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="observation">Observation</label>
+        <input type="text" id="observation" name="observation"
+          value="{{ asset_audit.observation if asset_audit else '' }}">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="remarks">Remarks</label>
+      <textarea id="remarks" name="remarks" rows="3">{{ asset_audit.remarks if asset_audit else '' }}</textarea>
+    </div>
+
+    <div class="section-div">Questions</div>
+    <div class="q-progress">
+      <div class="q-progress-text">0 of 0 answered</div>
+      <div class="q-progress-bar">
+        <div class="q-progress-fill"></div>
+      </div>
+    </div>
+    {% for section in grouped_questions %}
+    <div class="q-section">
+      <div class="q-section-name">{{ section.section_name }}</div>
+      <div class="q-list">
+        {% for question in section.questions %}
+        {% set response = responses_map[question.id|string] if question.id|string in responses_map else None %}
+        <div
+          class="q-row {% if response and response.response_status == 'fail' %}is-nc{% elif response and response.response_status == 'ofi' %}is-ofi{% endif %}">
+          <div class="q-text">{{ question.question_text }}</div>
+          <input type="text" class="q-remarks" name="remarks_{{ question.id }}"
+            value="{{ response.remarks if response else '' }}" placeholder="Remarks">
+          <div class="toggle-group q-toggle">
+            <label title="Complied"
+              class="btn btn-pass {% if response and response.response_status == 'pass' %}selected{% endif %}">
+              <input type="radio" name="response_status_{{ question.id }}" value="pass" {% if response and
+                response.response_status=='pass' %}checked{% endif %}> C<span class="status-abbr-full">omplied</span>
+            </label>
+            <label title="Opportunity for Improvement"
+              class="btn btn-ofi {% if response and response.response_status == 'ofi' %}selected{% endif %}">
+              <input type="radio" name="response_status_{{ question.id }}" value="ofi" {% if response and
+                response.response_status=='ofi' %}checked{% endif %}> OFI<span class="status-abbr-full"> Opportunity for
+                Improvement</span>
+            </label>
+            <label title="Not Applicable"
+              class="btn btn-na {% if response and response.response_status not in ['pass','fail','ofi'] %}selected{% endif %}">
+              <input type="radio" name="response_status_{{ question.id }}" value="na" {% if response and
+                response.response_status not in ['pass','fail','ofi'] %}checked{% endif %}> NA<span
+                class="status-abbr-full"> Not Applicable</span>
+            </label>
+          </div>
+          {% set qphotos = photos_map[question.id|string] if question.id|string in photos_map else [] %}
+          <div class="q-photos" data-question-id="{{ question.id }}">
+            {% for p in qphotos %}
+            <div class="q-photo-thumb-wrap">
               <a href="{{ url_for('uploaded_file', filename=p.file_path) }}" target="_blank" class="q-photo-thumb">
                 <img src="{{ url_for('uploaded_file', filename=p.file_path) }}" alt="Photo">
               </a>
-              {% else %}
-              <span class="q-photo-empty">—</span>
-              {% endfor %}
-            </div>
-          {% set obs = obs_map[question.id|string] if question.id|string in obs_map else None %}
-          {% if obs %}
-          <div class="nc-panel nc-view">
-            <div><b>Observation:</b> {{ obs.observation or '&mdash;'|safe }}</div>
-            <div>Finding severity, responsibility and target date are managed in Observations after submission.</div>
-            <div><b>Status:</b> {{ obs_display_status(obs) }} &middot; <a href="{{ url_for('observation_detail', obs_id=obs.id) }}">Open observation</a></div>
-          </div>
-          {% endif %}
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endfor %}
-    {% else %}
-      <!-- Edit form -->
-      <form action="{{ url_for('audit_equipment_save', audit_id=audit.id) }}" method="post" enctype="multipart/form-data">
-        <input type="hidden" name="asset_id" value="{{ selected_asset.id }}">
-        
-        <div class="field-grid cols-2">
-          <div class="form-group">
-            <label for="location">Location</label>
-            <input type="text" id="location" name="location" value="{{ asset_audit.location if asset_audit else '' }}">
-          </div>
-          <div class="form-group">
-            <label for="rank">Rank</label>
-            <select id="rank" name="rank">
-              {% for option in ['N/A','5','4','3','2','1'] %}
-              <option value="{{ option }}" {% if asset_audit and asset_audit.rank == option %}selected{% endif %}>{{ option }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-        
-        <div class="field-grid cols-2">
-          <div class="form-group">
-            <label>Audited</label>
-            <select name="is_audited">
-              <option value="no" {% if asset_audit and not asset_audit.is_audited %}selected{% endif %}>No</option>
-              <option value="yes" {% if asset_audit and asset_audit.is_audited %}selected{% endif %}>Yes</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="observation">Observation</label>
-            <input type="text" id="observation" name="observation" value="{{ asset_audit.observation if asset_audit else '' }}">
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <label for="remarks">Remarks</label>
-          <textarea id="remarks" name="remarks" rows="3">{{ asset_audit.remarks if asset_audit else '' }}</textarea>
-        </div>
-        
-        <div class="section-div">Questions</div>
-        <div class="q-progress">
-  <div class="q-progress-text">0 of 0 answered</div>
-  <div class="q-progress-bar"><div class="q-progress-fill"></div></div>
-</div>
-        {% for section in grouped_questions %}
-        <div class="q-section">
-          <div class="q-section-name">{{ section.section_name }}</div>
-          <div class="q-list">
-            {% for question in section.questions %}
-            {% set response = responses_map[question.id|string] if question.id|string in responses_map else None %}
-            <div class="q-row {% if response and response.response_status == 'fail' %}is-nc{% elif response and response.response_status == 'ofi' %}is-ofi{% endif %}">
-              <div class="q-text">{{ question.question_text }}</div>
-              <input type="text" class="q-remarks" name="remarks_{{ question.id }}" value="{{ response.remarks if response else '' }}" placeholder="Remarks">
-              <div class="toggle-group q-toggle">
-                <label title="Complied" class="btn btn-pass {% if response and response.response_status == 'pass' %}selected{% endif %}">
-                  <input type="radio" name="response_status_{{ question.id }}" value="pass" {% if response and response.response_status == 'pass' %}checked{% endif %}> C<span class="status-abbr-full">omplied</span>
-                </label>
-                <label title="Not Complied" class="btn btn-fail {% if response and response.response_status == 'fail' %}selected{% endif %}">
-                  <input type="radio" name="response_status_{{ question.id }}" value="fail" {% if response and response.response_status == 'fail' %}checked{% endif %}> NC<span class="status-abbr-full"> Not Complied</span>
-                </label>
-                                <label title="Opportunity for Improvement" class="btn btn-ofi {% if response and response.response_status == 'ofi' %}selected{% endif %}">
-                  <input type="radio" name="response_status_{{ question.id }}" value="ofi" {% if response and response.response_status == 'ofi' %}checked{% endif %}> OFI<span class="status-abbr-full"> Opportunity for Improvement</span>
-                </label>
-<label title="Not Applicable" class="btn btn-na {% if response and response.response_status not in ['pass','fail','ofi'] %}selected{% endif %}">
-                  <input type="radio" name="response_status_{{ question.id }}" value="na" {% if response and response.response_status not in ['pass','fail','ofi'] %}checked{% endif %}> NA<span class="status-abbr-full"> Not Applicable</span>
-                </label>
-              </div>
-              {% set qphotos = photos_map[question.id|string] if question.id|string in photos_map else [] %}
-              <div class="q-photos" data-question-id="{{ question.id }}">
-                {% for p in qphotos %}
-                <div class="q-photo-thumb-wrap">
-                  <a href="{{ url_for('uploaded_file', filename=p.file_path) }}" target="_blank" class="q-photo-thumb">
-                    <img src="{{ url_for('uploaded_file', filename=p.file_path) }}" alt="Photo">
-                  </a>
-                  <button type="button" class="q-photo-del" data-photo-id="{{ p.id }}" title="Remove photo">&times;</button>
-                </div>
-                {% endfor %}
-                <label class="q-photo-add" for="photo_{{ question.id }}" title="Add photo (camera or gallery)"
-                        style="{{ 'display:none;' if qphotos|length >= 1000 else '' }}">📷</label>
-                <span class="photo-upload-state" role="status" aria-live="polite"></span>
-              </div>
-              <input id="photo_{{ question.id }}" class="hidden-file-input" type="file"
-                     name="photo_{{ question.id }}" accept="image/*" capture="environment">
-            <input type="hidden" name="photo_latitude_{{ question.id }}" id="photo_latitude_{{ question.id }}">
-            <input type="hidden" name="photo_longitude_{{ question.id }}" id="photo_longitude_{{ question.id }}">
-            <input type="hidden" name="photo_accuracy_{{ question.id }}" id="photo_accuracy_{{ question.id }}">
-            <input type="hidden" name="photo_captured_at_{{ question.id }}" id="photo_captured_at_{{ question.id }}">
-              <div class="nc-panel" {% if not (response and response.response_status == 'fail') %}hidden{% endif %}><div class="hint" style="padding:8px 0;">NC finding details (severity, responsible team and target date) are completed after submission in Observations.</div></div>
+              <button type="button" class="q-photo-del" data-photo-id="{{ p.id }}" title="Remove photo">&times;</button>
             </div>
             {% endfor %}
+            <label class="q-photo-add" for="photo_{{ question.id }}" title="Add photo (camera or gallery)"
+              style="{{ 'display:none;' if qphotos|length >= 1000 else '' }}">📷</label>
+            <span class="photo-upload-state" role="status" aria-live="polite"></span>
+          </div>
+          <input id="photo_{{ question.id }}" class="hidden-file-input" type="file" name="photo_{{ question.id }}"
+            accept="image/*" capture="environment">
+          <input type="hidden" name="photo_latitude_{{ question.id }}" id="photo_latitude_{{ question.id }}">
+          <input type="hidden" name="photo_longitude_{{ question.id }}" id="photo_longitude_{{ question.id }}">
+          <input type="hidden" name="photo_accuracy_{{ question.id }}" id="photo_accuracy_{{ question.id }}">
+          <input type="hidden" name="photo_captured_at_{{ question.id }}" id="photo_captured_at_{{ question.id }}">
+          <div class="nc-panel" {% if not (response and response.response_status=='fail' ) %}hidden{% endif %}>
+            <div class="hint" style="padding:8px 0;">NC finding details (severity, responsible team and target date) are
+              completed after submission in Observations.</div>
           </div>
         </div>
         {% endfor %}
-        
-        <div class="mobile-save-bar" style="margin-top: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-          <a href="{{ url_for('audit_site', audit_id=audit.id) }}" class="btn btn-ghost">← Back to Site</a>
-          <button type="submit" class="btn btn-primary">💾 Save Asset Audit</button>
-        </div>
-      </form>
-    {% endif %}
-  {% else %}
-    <div style="text-align: center; color: #6B7280; padding: 40px 20px;">
-      <p style="font-size: 16px; margin-bottom: 8px;">Select equipment from the dropdown to inspect</p>
-      <p style="font-size: 13px;">Choose an existing item or add custom equipment above</p>
+      </div>
     </div>
+    {% endfor %}
+
+    <div class="mobile-save-bar"
+      style="margin-top: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <a href="{{ url_for('audit_site', audit_id=audit.id) }}" class="btn btn-ghost">← Back to Site</a>
+      <button type="submit" class="btn btn-primary">💾 Save Asset Audit</button>
+    </div>
+  </form>
+  {% endif %}
+  {% else %}
+  <div style="text-align: center; color: #6B7280; padding: 40px 20px;">
+    <p style="font-size: 16px; margin-bottom: 8px;">Select equipment from the dropdown to inspect</p>
+    <p style="font-size: 13px;">Choose an existing item or add custom equipment above</p>
+  </div>
   {% endif %}
 </div>
 
 <script>
-function selectEquipment(assetId) {
-  if (assetId) {
-    window.location.href = "{{ url_for('audit_equipment', audit_id=audit.id) }}" + "?asset_id=" + assetId;
-  }
-}
-
-function addCustomEquipment(e) {
-  e.preventDefault();
-  
-  const name = document.getElementById('new_equipment_name').value.trim();
-  const typeId = document.getElementById('new_equipment_type').value;
-  
-  if (!name || !typeId) {
-    alert('Please fill in equipment name and type');
-    return;
-  }
-  
-  const formData = new FormData();
-  formData.append('equipment_name', name);
-  formData.append('asset_type_id', typeId);
-  
-  fetch("{{ url_for('add_equipment', audit_id=audit.id) }}", {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      // Redirect to the new equipment
-      window.location.href = data.redirect_url;
-    } else {
-      alert('Error: ' + (data.error || 'Failed to add equipment'));
+  function selectEquipment(assetId) {
+    if (assetId) {
+      window.location.href = "{{ url_for('audit_equipment', audit_id=audit.id) }}" + "?asset_id=" + assetId;
     }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    alert('Failed to add equipment');
-  });
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.toggle-group label').forEach(function(label) {
-    label.addEventListener('click', function () {
-      var container = label.parentElement;
-      container.querySelectorAll('label').forEach(function(item){ item.classList.remove('selected'); });
-      label.classList.add('selected');
-    });
-  });
-
-  // Not Complied reveals the observation panel; Complied / NA hide it (never required for those)
-  document.querySelectorAll('.q-row').forEach(function(row) {
-    var panel = row.querySelector('.nc-panel');
-    if (!panel) return;
-    row.querySelectorAll('.q-toggle label').forEach(function(label) {
-      label.addEventListener('click', function() {
-        setTimeout(function() {
-          var c = row.querySelector('input[name^="response_status_"]:checked');
-          panel.hidden = !(c && c.value === 'fail');
-          row.classList.toggle('is-nc', !!(c && c.value === 'fail'));
-          updateProgress();
-        }, 0);
-      });
-    });
-    row.querySelectorAll('.sev').forEach(function(l) {
-      l.addEventListener('click', function() {
-        setTimeout(function() { row.querySelectorAll('.sev').forEach(function(x) { x.classList.toggle('selected', x.querySelector('input').checked); }); }, 0);
-      });
-    });
-  });
-  function updateProgress() {
-    var rows = document.querySelectorAll('.q-row'), n = 0;
-    rows.forEach(function(r) { if (r.querySelector('input[name^="response_status_"]:checked')) n++; });
-    var t = document.querySelector('.q-progress-text');
-    if (t) t.textContent = n + ' of ' + rows.length + ' answered';
-    var f = document.querySelector('.q-progress-fill');
-    if (f) f.style.width = (rows.length ? Math.round(n * 100 / rows.length) : 0) + '%';
   }
-  updateProgress();
 
-  // Delete an already-saved photo (AJAX, no page reload)
-  document.querySelectorAll('.q-photo-del').forEach(function(btn) {
-    btn.addEventListener('click', function () {
-      var photoId = btn.getAttribute('data-photo-id');
-      if (!confirm('Remove this photo?')) return;
-      fetch("{{ url_for('delete_response_photo', audit_id=audit.id, photo_id='PHOTO_ID') }}".replace('PHOTO_ID', photoId), {
-        method: 'POST'
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
+  function addCustomEquipment(e) {
+    e.preventDefault();
+
+    const name = document.getElementById('new_equipment_name').value.trim();
+    const typeId = document.getElementById('new_equipment_type').value;
+
+    if (!name || !typeId) {
+      alert('Please fill in equipment name and type');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('equipment_name', name);
+    formData.append('asset_type_id', typeId);
+
+    fetch("{{ url_for('add_equipment', audit_id=audit.id) }}", {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => response.json())
+      .then(data => {
         if (data.success) {
-          var wrap = btn.closest('.q-photo-thumb-wrap');
-          var cluster = btn.closest('.q-photos');
-          wrap.remove();
-          var addBtn = cluster.querySelector('.q-photo-add');
-          if (addBtn) addBtn.style.display = '';
+          // Redirect to the new equipment
+          window.location.href = data.redirect_url;
         } else {
-          alert('Could not remove photo: ' + (data.error || 'unknown error'));
+          alert('Error: ' + (data.error || 'Failed to add equipment'));
         }
       })
-      .catch(function() { alert('Could not remove photo.'); });
-    });
-  });
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to add equipment');
+      });
+  }
 
-  // IndexedDB makes the capture queue durable across refreshes and temporary
-  // network loss. Each request uploads exactly one image (never a bulk form).
-  var photoQueueDbPromise = new Promise(function(resolve, reject) {
-    if (!window.indexedDB) return reject(new Error('This browser does not support offline photo storage.'));
-    var req = indexedDB.open('SolarAuditPhotoQueue', 1);
-    req.onupgradeneeded = function() {
-      var db = req.result;
-      if (!db.objectStoreNames.contains('pendingPhotos')) db.createObjectStore('pendingPhotos', {keyPath:'id'});
-    };
-    req.onsuccess = function() { resolve(req.result); };
-    req.onerror = function() { reject(req.error || new Error('Could not open photo queue.')); };
-  });
-  function photoQueuePut(record) {
-    return photoQueueDbPromise.then(function(db) { return new Promise(function(resolve, reject) {
-      var tx = db.transaction('pendingPhotos', 'readwrite');
-      tx.objectStore('pendingPhotos').put(record);
-      tx.oncomplete = resolve; tx.onerror = function() { reject(tx.error); };
-    }); });
-  }
-  function photoQueueDelete(id) {
-    return photoQueueDbPromise.then(function(db) { return new Promise(function(resolve, reject) {
-      var tx = db.transaction('pendingPhotos', 'readwrite');
-      tx.objectStore('pendingPhotos').delete(id);
-      tx.oncomplete = resolve; tx.onerror = function() { reject(tx.error); };
-    }); });
-  }
-  function photoQueueAll() {
-    return photoQueueDbPromise.then(function(db) { return new Promise(function(resolve, reject) {
-      var tx = db.transaction('pendingPhotos', 'readonly'), req = tx.objectStore('pendingPhotos').getAll();
-      req.onsuccess = function() { resolve(req.result || []); };
-      req.onerror = function() { reject(req.error); };
-    }); });
-  }
-  function newPhotoQueueId() {
-    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0;
-      return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.toggle-group label').forEach(function (label) {
+      label.addEventListener('click', function () {
+        var container = label.parentElement;
+        container.querySelectorAll('label').forEach(function (item) { item.classList.remove('selected'); });
+        label.classList.add('selected');
+      });
     });
-  }
-  function renderUploadedPhoto(cluster, result, state) {
-    if (cluster.querySelector('[data-photo-id="' + result.photo_id + '"]')) return;
-    var wrap = document.createElement('div'); wrap.className = 'q-photo-thumb-wrap';
-    var link = document.createElement('a'); link.className = 'q-photo-thumb'; link.href = result.photo_url; link.target = '_blank';
-    var img = document.createElement('img'); img.src = result.photo_url; img.alt = 'Uploaded audit photo'; link.appendChild(img);
-    var del = document.createElement('button'); del.type = 'button'; del.className = 'q-photo-del';
-    del.dataset.photoId = result.photo_id; del.title = 'Remove photo'; del.textContent = '×';
-    del.addEventListener('click', function() {
-      if (!confirm('Remove this photo?')) return;
-      fetch("{{ url_for('delete_response_photo', audit_id=audit.id, photo_id='PHOTO_ID') }}".replace('PHOTO_ID', result.photo_id), {method:'POST', credentials:'same-origin'})
-        .then(function(r) { return r.json(); }).then(function(data) {
-          if (data.success) { wrap.remove(); if (state) state.textContent = 'Photo removed.'; }
-          else if (state) state.textContent = data.error || 'Could not remove photo.';
-        }).catch(function() { if (state) state.textContent = 'Could not remove photo.'; });
-    });
-    wrap.appendChild(link); wrap.appendChild(del);
-    var addLabel = cluster.querySelector('.q-photo-add'), stateNode = cluster.querySelector('.photo-upload-state');
-    cluster.insertBefore(wrap, addLabel || stateNode || null);
-    if (state) state.textContent = '✓ Photo saved (' + cluster.querySelectorAll('.q-photo-thumb-wrap').length + ').';
-  }
-  // Serialize uploads so several large captures cannot saturate the server
-  // or multiply memory pressure when the user takes photos rapidly.
-  var photoUploadChain = Promise.resolve();
-  function enqueuePhotoUpload(record, cluster, state) {
-    var task = photoUploadChain.then(function() { return sendQueuedPhoto(record, cluster, state); });
-    photoUploadChain = task.catch(function() {});
-    return task;
-  }
-  async function sendQueuedPhoto(record, cluster, state) {
-    if (!navigator.onLine) throw new Error('Offline — photo safely queued for automatic sync.');
-    if (state) state.textContent = 'Uploading photo…';
-    var body = new FormData();
-    body.append('photo', record.blob, record.filename);
-    body.append('asset_id', record.assetId);
-    body.append('question_id', record.questionId);
-    body.append('client_photo_id', record.id);
-    body.append('response_status', record.status);
-    body.append('remarks', record.remarks || '');
-    body.append('photo_latitude_' + record.questionId, record.latitude);
-    body.append('photo_longitude_' + record.questionId, record.longitude);
-    body.append('photo_accuracy_' + record.questionId, record.accuracy || '');
-    body.append('photo_captured_at_' + record.questionId, record.capturedAt);
-    var response = await fetch("{{ url_for('audit_equipment_photo_upload', audit_id=audit.id) }}", {
-      method:'POST', body:body, credentials:'same-origin'
-    });
-    var result = await response.json().catch(function() { return {}; });
-    if (!response.ok || !result.ok) throw new Error(result.error || ('Upload failed (' + response.status + ').'));
-    await photoQueueDelete(record.id);
-    renderUploadedPhoto(cluster, result, state);
-  }
-  function clusterForQuestion(qid) {
-    var input = document.getElementById('photo_' + qid);
-    return input ? input.closest('.q-row').querySelector('.q-photos') : null;
-  }
-  async function retryPendingEquipmentPhotos() {
-    if (!navigator.onLine) return;
-    try {
-      var records = await photoQueueAll();
-      var form = document.querySelector('form[action*="/equipment/save"]');
-      if (!form) return;
-      var activeAssetId = form.querySelector('input[name="asset_id"]').value;
-      for (var i = 0; i < records.length; i++) {
-        var record = records[i];
-        if (record.auditId !== '{{ audit.id }}' || record.assetId !== activeAssetId) continue;
-        var cluster = clusterForQuestion(record.questionId);
-        if (!cluster) continue;
-        var state = cluster.querySelector('.photo-upload-state');
-        try { await enqueuePhotoUpload(record, cluster, state); }
-        catch (e) { if (state) state.textContent = 'Queued for retry: ' + (e.message || 'network unavailable'); }
-      }
-    } catch (e) { console.warn('Could not inspect pending photo queue', e); }
-  }
-  document.querySelectorAll('.hidden-file-input').forEach(function(input) {
-    input.addEventListener('change', async function () {
-      if (!input.files || !input.files.length) return;
-      var file = input.files[0], row = input.closest('.q-row'), cluster = row.querySelector('.q-photos');
-      var state = cluster.querySelector('.photo-upload-state');
-      var existingCount = cluster.querySelectorAll('.q-photo-thumb-wrap').length;
-      if (existingCount >= 1000) { input.value = ''; if (state) state.textContent = 'Maximum 1000 photos reached.'; return; }
-      var qid = input.id.replace('photo_', '');
-      var statusInput = row.querySelector('input[name="response_status_' + qid + '"]:checked');
-      if (!statusInput) { input.value = ''; if (state) state.textContent = 'Select C, NC or NA before adding a photo.'; return; }
-      if (file.size > 50 * 1024 * 1024) { input.value = ''; if (state) state.textContent = 'Photo exceeds the 50 MB limit.'; return; }
-      if (state) state.textContent = 'Getting GPS…';
-      function getPosition() {
-        return new Promise(function(resolve, reject) {
-          if (!navigator.geolocation) return reject(new Error('Location is unavailable.'));
-          navigator.geolocation.getCurrentPosition(resolve, function() {
-            reject(new Error('GPS location is required. Enable location permission and retry.'));
-          }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+
+    // Not Complied reveals the observation panel; Complied / NA hide it (never required for those)
+    document.querySelectorAll('.q-row').forEach(function (row) {
+      var panel = row.querySelector('.nc-panel');
+      if (!panel) return;
+      row.querySelectorAll('.q-toggle label').forEach(function (label) {
+        label.addEventListener('click', function () {
+          setTimeout(function () {
+            var c = row.querySelector('input[name^="response_status_"]:checked');
+            panel.hidden = !(c && c.value === 'fail');
+            row.classList.toggle('is-nc', !!(c && c.value === 'fail'));
+            updateProgress();
+          }, 0);
         });
-      }
-      var photoIsQueued = false;
-      try {
-        var position = await getPosition();
-        var form = document.querySelector('form[action*="/equipment/save"]');
-        var remarks = row.querySelector('input[name="remarks_' + qid + '"]');
-        var record = {
-          id: newPhotoQueueId(),
-          auditId: '{{ audit.id }}', assetId: form.querySelector('input[name="asset_id"]').value,
-          questionId: qid, status: statusInput.value, remarks: remarks ? remarks.value : '',
-          blob: file, filename: file.name,
-          latitude: String(position.coords.latitude), longitude: String(position.coords.longitude),
-          accuracy: String(position.coords.accuracy || ''), capturedAt: new Date().toISOString()
-        };
-        // Write to IndexedDB first. If the tab closes or the connection drops,
-        // the file remains queued and will retry on this page when online.
-        await photoQueuePut(record);
-        photoIsQueued = true;
-        input.value = '';
-        await enqueuePhotoUpload(record, cluster, state);
-      } catch (error) {
-        if (state) state.textContent = (error && error.message) ? error.message : 'Photo queued; retry when online.';
-        // If IndexedDB itself failed, leave the selected file available for retry.
-        if (photoIsQueued) input.value = '';
-      }
+      });
+      row.querySelectorAll('.sev').forEach(function (l) {
+        l.addEventListener('click', function () {
+          setTimeout(function () { row.querySelectorAll('.sev').forEach(function (x) { x.classList.toggle('selected', x.querySelector('input').checked); }); }, 0);
+        });
+      });
     });
-  });
-  window.addEventListener('online', retryPendingEquipmentPhotos);
-  // Retry records left by an interrupted upload when this audit/equipment is reopened.
-  retryPendingEquipmentPhotos();
+    function updateProgress() {
+      var rows = document.querySelectorAll('.q-row'), n = 0;
+      rows.forEach(function (r) { if (r.querySelector('input[name^="response_status_"]:checked')) n++; });
+      var t = document.querySelector('.q-progress-text');
+      if (t) t.textContent = n + ' of ' + rows.length + ' answered';
+      var f = document.querySelector('.q-progress-fill');
+      if (f) f.style.width = (rows.length ? Math.round(n * 100 / rows.length) : 0) + '%';
+    }
+    updateProgress();
 
-  {% if not selected_asset %}
-  document.getElementById('inspectionPanel').style.display = 'none';
-  {% endif %}
-});
+    // Delete an already-saved photo (AJAX, no page reload)
+    document.querySelectorAll('.q-photo-del').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var photoId = btn.getAttribute('data-photo-id');
+        if (!confirm('Remove this photo?')) return;
+        fetch("{{ url_for('delete_response_photo', audit_id=audit.id, photo_id='PHOTO_ID') }}".replace('PHOTO_ID', photoId), {
+          method: 'POST'
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.success) {
+              var wrap = btn.closest('.q-photo-thumb-wrap');
+              var cluster = btn.closest('.q-photos');
+              wrap.remove();
+              var addBtn = cluster.querySelector('.q-photo-add');
+              if (addBtn) addBtn.style.display = '';
+            } else {
+              alert('Could not remove photo: ' + (data.error || 'unknown error'));
+            }
+          })
+          .catch(function () { alert('Could not remove photo.'); });
+      });
+    });
+
+    // IndexedDB makes the capture queue durable across refreshes and temporary
+    // network loss. Each request uploads exactly one image (never a bulk form).
+    var photoQueueDbPromise = new Promise(function (resolve, reject) {
+      if (!window.indexedDB) return reject(new Error('This browser does not support offline photo storage.'));
+      var req = indexedDB.open('SolarAuditPhotoQueue', 1);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains('pendingPhotos')) db.createObjectStore('pendingPhotos', { keyPath: 'id' });
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error('Could not open photo queue.')); };
+    });
+    function photoQueuePut(record) {
+      return photoQueueDbPromise.then(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction('pendingPhotos', 'readwrite');
+          tx.objectStore('pendingPhotos').put(record);
+          tx.oncomplete = resolve; tx.onerror = function () { reject(tx.error); };
+        });
+      });
+    }
+    function photoQueueDelete(id) {
+      return photoQueueDbPromise.then(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction('pendingPhotos', 'readwrite');
+          tx.objectStore('pendingPhotos').delete(id);
+          tx.oncomplete = resolve; tx.onerror = function () { reject(tx.error); };
+        });
+      });
+    }
+    function photoQueueAll() {
+      return photoQueueDbPromise.then(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction('pendingPhotos', 'readonly'), req = tx.objectStore('pendingPhotos').getAll();
+          req.onsuccess = function () { resolve(req.result || []); };
+          req.onerror = function () { reject(req.error); };
+        });
+      });
+    }
+    function newPhotoQueueId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+      });
+    }
+    function renderUploadedPhoto(cluster, result, state) {
+      if (cluster.querySelector('[data-photo-id="' + result.photo_id + '"]')) return;
+      var wrap = document.createElement('div'); wrap.className = 'q-photo-thumb-wrap';
+      var link = document.createElement('a'); link.className = 'q-photo-thumb'; link.href = result.photo_url; link.target = '_blank';
+      var img = document.createElement('img'); img.src = result.photo_url; img.alt = 'Uploaded audit photo'; link.appendChild(img);
+      var del = document.createElement('button'); del.type = 'button'; del.className = 'q-photo-del';
+      del.dataset.photoId = result.photo_id; del.title = 'Remove photo'; del.textContent = '×';
+      del.addEventListener('click', function () {
+        if (!confirm('Remove this photo?')) return;
+        fetch("{{ url_for('delete_response_photo', audit_id=audit.id, photo_id='PHOTO_ID') }}".replace('PHOTO_ID', result.photo_id), { method: 'POST', credentials: 'same-origin' })
+          .then(function (r) { return r.json(); }).then(function (data) {
+            if (data.success) { wrap.remove(); if (state) state.textContent = 'Photo removed.'; }
+            else if (state) state.textContent = data.error || 'Could not remove photo.';
+          }).catch(function () { if (state) state.textContent = 'Could not remove photo.'; });
+      });
+      wrap.appendChild(link); wrap.appendChild(del);
+      var addLabel = cluster.querySelector('.q-photo-add'), stateNode = cluster.querySelector('.photo-upload-state');
+      cluster.insertBefore(wrap, addLabel || stateNode || null);
+      if (state) state.textContent = '✓ Photo saved (' + cluster.querySelectorAll('.q-photo-thumb-wrap').length + ').';
+    }
+    // Serialize uploads so several large captures cannot saturate the server
+    // or multiply memory pressure when the user takes photos rapidly.
+    var photoUploadChain = Promise.resolve();
+    function enqueuePhotoUpload(record, cluster, state) {
+      var task = photoUploadChain.then(function () { return sendQueuedPhoto(record, cluster, state); });
+      photoUploadChain = task.catch(function () { });
+      return task;
+    }
+    async function sendQueuedPhoto(record, cluster, state) {
+      if (!navigator.onLine) throw new Error('Offline — photo safely queued for automatic sync.');
+      if (state) state.textContent = 'Uploading photo…';
+      var body = new FormData();
+      body.append('photo', record.blob, record.filename);
+      body.append('asset_id', record.assetId);
+      body.append('question_id', record.questionId);
+      body.append('client_photo_id', record.id);
+      body.append('response_status', record.status);
+      body.append('remarks', record.remarks || '');
+      body.append('photo_latitude_' + record.questionId, record.latitude);
+      body.append('photo_longitude_' + record.questionId, record.longitude);
+      body.append('photo_accuracy_' + record.questionId, record.accuracy || '');
+      body.append('photo_captured_at_' + record.questionId, record.capturedAt);
+      var response = await fetch("{{ url_for('audit_equipment_photo_upload', audit_id=audit.id) }}", {
+        method: 'POST', body: body, credentials: 'same-origin'
+      });
+      var result = await response.json().catch(function () { return {}; });
+      if (!response.ok || !result.ok) throw new Error(result.error || ('Upload failed (' + response.status + ').'));
+      await photoQueueDelete(record.id);
+      renderUploadedPhoto(cluster, result, state);
+    }
+    function clusterForQuestion(qid) {
+      var input = document.getElementById('photo_' + qid);
+      return input ? input.closest('.q-row').querySelector('.q-photos') : null;
+    }
+    async function retryPendingEquipmentPhotos() {
+      if (!navigator.onLine) return;
+      try {
+        var records = await photoQueueAll();
+        var form = document.querySelector('form[action*="/equipment/save"]');
+        if (!form) return;
+        var activeAssetId = form.querySelector('input[name="asset_id"]').value;
+        for (var i = 0; i < records.length; i++) {
+          var record = records[i];
+          if (record.auditId !== '{{ audit.id }}' || record.assetId !== activeAssetId) continue;
+          var cluster = clusterForQuestion(record.questionId);
+          if (!cluster) continue;
+          var state = cluster.querySelector('.photo-upload-state');
+          try { await enqueuePhotoUpload(record, cluster, state); }
+          catch (e) { if (state) state.textContent = 'Queued for retry: ' + (e.message || 'network unavailable'); }
+        }
+      } catch (e) { console.warn('Could not inspect pending photo queue', e); }
+    }
+    document.querySelectorAll('.hidden-file-input').forEach(function (input) {
+      input.addEventListener('change', async function () {
+        if (!input.files || !input.files.length) return;
+        var file = input.files[0], row = input.closest('.q-row'), cluster = row.querySelector('.q-photos');
+        var state = cluster.querySelector('.photo-upload-state');
+        var existingCount = cluster.querySelectorAll('.q-photo-thumb-wrap').length;
+        if (existingCount >= 1000) { input.value = ''; if (state) state.textContent = 'Maximum 1000 photos reached.'; return; }
+        var qid = input.id.replace('photo_', '');
+        var statusInput = row.querySelector('input[name="response_status_' + qid + '"]:checked');
+        if (!statusInput) { input.value = ''; if (state) state.textContent = 'Select C, NC or NA before adding a photo.'; return; }
+        if (file.size > 50 * 1024 * 1024) { input.value = ''; if (state) state.textContent = 'Photo exceeds the 50 MB limit.'; return; }
+        if (state) state.textContent = 'Getting GPS…';
+        function getPosition() {
+          return new Promise(function (resolve, reject) {
+            if (!navigator.geolocation) return reject(new Error('Location is unavailable.'));
+            navigator.geolocation.getCurrentPosition(resolve, function () {
+              reject(new Error('GPS location is required. Enable location permission and retry.'));
+            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+          });
+        }
+        var photoIsQueued = false;
+        try {
+          var position = await getPosition();
+          var form = document.querySelector('form[action*="/equipment/save"]');
+          var remarks = row.querySelector('input[name="remarks_' + qid + '"]');
+          var record = {
+            id: newPhotoQueueId(),
+            auditId: '{{ audit.id }}', assetId: form.querySelector('input[name="asset_id"]').value,
+            questionId: qid, status: statusInput.value, remarks: remarks ? remarks.value : '',
+            blob: file, filename: file.name,
+            latitude: String(position.coords.latitude), longitude: String(position.coords.longitude),
+            accuracy: String(position.coords.accuracy || ''), capturedAt: new Date().toISOString()
+          };
+          // Write to IndexedDB first. If the tab closes or the connection drops,
+          // the file remains queued and will retry on this page when online.
+          await photoQueuePut(record);
+          photoIsQueued = true;
+          input.value = '';
+          await enqueuePhotoUpload(record, cluster, state);
+        } catch (error) {
+          if (state) state.textContent = (error && error.message) ? error.message : 'Photo queued; retry when online.';
+          // If IndexedDB itself failed, leave the selected file available for retry.
+          if (photoIsQueued) input.value = '';
+        }
+      });
+    });
+    window.addEventListener('online', retryPendingEquipmentPhotos);
+    // Retry records left by an interrupted upload when this audit/equipment is reopened.
+    retryPendingEquipmentPhotos();
+
+    {% if not selected_asset %}
+    document.getElementById('inspectionPanel').style.display = 'none';
+    {% endif %}
+  });
 </script>
 {% endblock %}
