@@ -1359,12 +1359,20 @@
       <a href="{{ url_for('reports') }}" class="nav-link {% if request.endpoint=='reports' %}active{% endif %}">
         <span class="icon">▦</span> Reports
       </a>
-      {% if canonical_role(current_user.role) in ['hq_admin', 'site_admin'] %}
+      {% if canonical_role(current_user.role) in ['hq_admin', 'state_admin', 'site_admin'] %}
       <div class="nav-section">Admin</div>
+      {% if central_mode and is_portal_admin %}
+      <a href="{{ url_for('hq_users') }}"
+        class="nav-link {% if request.endpoint in ['hq_users','hq_users_add','hq_users_update','hq_users_reset_password','hq_users_toggle'] %}active{% endif %}">
+        <span class="icon">◎</span> {{ 'State Users' if is_state_admin else 'Global Users' }}
+      </a>
+      {% endif %}
+      {% if not (central_mode and is_portal_admin and not active_site_context) %}
       <a href="{{ url_for('users') }}"
         class="nav-link {% if request.endpoint in ['users','users_new','users_edit','users_delete'] %}active{% endif %}">
-        <span class="icon">◎</span> Users
+        <span class="icon">◎</span> {{ 'Site Users' if (central_mode and is_portal_admin) else 'Users' }}
       </a>
+      {% endif %}
       <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint=='settings' %}active{% endif %}">
         <span class="icon">⚙</span> Settings
       </a>
@@ -1390,12 +1398,20 @@
         </div>
       </div>
       <div class="topbar-right">
-        {% if central_mode and is_hq_admin %}
+        {% if central_mode and is_portal_admin %}
           {% if active_site_context %}
             <a class="topbar-status" href="{{ url_for('hq_return') }}" title="Switch to another authorized site">{{ active_site_context.site_name }} · Change site</a>
           {% else %}
-            <a class="topbar-status" href="{{ url_for('hq_dashboard') }}">HQ Administration</a>
+            <a class="topbar-status" href="{{ url_for('hq_dashboard') }}">{{ 'State Administration' if is_state_admin else 'HQ Administration' }}</a>
           {% endif %}
+        {% elif central_mode and accessible_sites|length > 1 and active_site_context %}
+          <form method="post" action="{{ url_for('switch_site', site_id=active_site_context.site_id) }}" onsubmit="this.action='/switch-site/' + this.querySelector('select').value;" style="display:inline-flex; align-items:center;">
+            <select aria-label="Switch active site" onchange="this.form.action='/switch-site/' + this.value; this.form.submit();" style="padding:.25rem .5rem; border-radius:6px; border:1px solid var(--border,#cbd5e1); font-size:.8rem; background:var(--surface,#fff);">
+              {% for s in accessible_sites %}
+                <option value="{{ s.site_id }}" {% if s.site_id == active_site_context.site_id %}selected{% endif %}>{{ s.site_name }} ({{ s.site_id }})</option>
+              {% endfor %}
+            </select>
+          </form>
         {% endif %}
         <span class="topbar-status"><span class="topbar-status-dot"></span> Audit workspace ready</span>
         <a class="topbar-icon" href="{{ url_for('observations_list') }}" aria-label="Open observations"
@@ -1451,10 +1467,15 @@
     <a class="m-sheet-link" href="{{ url_for('plants') }}"><span class="m-ic">⚡</span> Plants</a>
     <a class="m-sheet-link" href="{{ url_for('reports') }}"><span class="m-ic">▦</span> Reports</a>
     <a class="m-sheet-link" href="{{ url_for('mobile_home') }}"><span class="m-ic">▤</span> Mobile Home</a>
-    {% if canonical_role(current_user.role) in ['hq_admin', 'site_admin'] %}
+    {% if canonical_role(current_user.role) in ['hq_admin', 'state_admin', 'site_admin'] %}
     <div class="m-sheet-section">Admin</div>
-    <a class="m-sheet-link" href="{{ url_for('users') }}"><span class="m-ic">◎</span> Users</a>
+    {% if central_mode and is_portal_admin %}
+    <a class="m-sheet-link" href="{{ url_for('hq_users') }}"><span class="m-ic">◎</span> {{ 'State Users' if is_state_admin else 'Global Users' }}</a>
+    {% endif %}
+    {% if not (central_mode and is_portal_admin and not active_site_context) %}
+    <a class="m-sheet-link" href="{{ url_for('users') }}"><span class="m-ic">◎</span> {{ 'Site Users' if (central_mode and is_portal_admin) else 'Users' }}</a>
     <a class="m-sheet-link" href="{{ url_for('settings') }}"><span class="m-ic">⚙</span> Settings</a>
+    {% endif %}
     {% endif %}
     <div class="m-sheet-section">Account</div>
     <a class="m-sheet-link m-sheet-danger" href="{{ url_for('logout') }}"><span class="m-ic">⏻</span> Logout</a>

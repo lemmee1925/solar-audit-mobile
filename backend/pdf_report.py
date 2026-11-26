@@ -55,10 +55,13 @@ def sev_color(sev):
     return {'critical': RED, 'major': AMBER}.get((sev or '').lower(), GRAY)
 
 
+_SUBSCRIPT_MAP = str.maketrans('₀₁₂₃₄₅₆₇₈₉\xa0', '0123456789 ')
+
+
 def safe(value, fallback='N/A'):
     if value is None or str(value).strip() == '':
         return fallback
-    return str(value)
+    return str(value).translate(_SUBSCRIPT_MAP)
 
 
 def score_color(pct):
@@ -219,14 +222,22 @@ def _make_photo_image(photo, max_width=7.0 * cm, max_height=5.0 * cm):
         return None
 
 
-def _photo_evidence(session, responses, content_width, st):
+def _photo_evidence(session, responses, content_width, st, anchor_prefix=None):
     """Render every stored photo for the current equipment's responses."""
     items = []
-    for resp, question, section in responses:
+    for sr_no, (resp, question, section) in enumerate(responses, 1):
         for photo in _get_response_photos(session, resp.id):
             image = _make_photo_image(photo)
             if image is not None:
-                caption_parts = [f"<b>Inspection Evidence</b><br/>{safe(question.question_text, 'Inspection Point')}"]
+                if anchor_prefix:
+                    heading_html = (
+                        f'<b>Inspection Evidence · '
+                        f'<link href="#{anchor_prefix}_{sr_no}" color="#1D4ED8">'
+                        f'<u>Sr. No. {sr_no}</u></link></b>'
+                    )
+                else:
+                    heading_html = f'<b>Inspection Evidence · Sr. No. {sr_no}</b>'
+                caption_parts = [f"{heading_html}<br/>{safe(question.question_text, 'Inspection Point')}"]
                 remark_text = (getattr(photo, 'remark', None) or '').strip()
                 if remark_text:
                     caption_parts.append(f"<br/><b>Remark: {safe(remark_text)}</b>")
@@ -370,7 +381,7 @@ def generate_pdf(audit_id_str, site_id=None):
         elements += section_heading('01','Executive Summary','Management-level view of audit coverage, compliance and open actions.',st)
         total_assets = session.query(func.count(AuditAsset.id)).filter(AuditAsset.audit_id==audit.id, AuditAsset.is_audited==True).scalar() or 0
         result = score_audit(session, audit.id)
-        total_responses = result['complied'] + result['not_complied'] + result['not_applicable']
+        total_responses = result['complied'] + result['not_complied'] + result['not_applicable'] + result['ofi']
         pass_count, fail_count = result['complied'], result['not_complied']
         # Submitted audits show the score frozen at submission; drafts show a live preview.
         if audit.score_pct is not None:
@@ -378,6 +389,23 @@ def generate_pdf(audit_id_str, site_id=None):
         else:
             score_pct, overall, rating = result['score_pct'], result['compliance_pct'], result['rating']
         obs_all = session.query(Observation).filter(Observation.audit_id==audit.id, Observation.status!='withdrawn').all()
+        obs_sev_by_resp_id = {ob.audit_response_id: (ob.severity or '').lower() for ob in obs_all if ob.audit_response_id}
+        OFI_MINOR_BLUE = HexColor('#2563EB')
+
+        def result_color(status, response_id=None):
+            st_l = (status or '').lower()
+            if st_l == 'pass':
+                return GREEN_DARK
+            if st_l == 'fail':
+                return RED
+            if st_l == 'ofi':
+                sev = obs_sev_by_resp_id.get(response_id, '')
+                if sev == 'critical':
+                    return RED
+                if sev == 'minor':
+                    return OFI_MINOR_BLUE
+                return AMBER
+            return GRAY
         open_ca = sum(1 for o in obs_all if o.status in UNFINISHED)
         sev_n = {k: sum(1 for o in obs_all if o.severity == k) for k in ('critical', 'major', 'minor')}
 
@@ -408,12 +436,12 @@ def generate_pdf(audit_id_str, site_id=None):
                      .filter(AuditResponse.audit_id==audit.id).all())
         agg={}
         for name,status in type_rows:
-            d=agg.setdefault(name or 'Safety',{'pass':0,'fail':0}); s_=(status or '').lower()
+            d=agg.setdefault(name or 'Safety',{'pass':0,'fail':0,'ofi':0}); s_=(status or '').lower()
             if s_ in d: d[s_]+=1
         if agg:
             rows=[[Paragraph('Equipment Type',st['header']),Paragraph('Complied',st['header']),Paragraph('Not Complied',st['header']),Paragraph('Score',st['header']),Paragraph('Compliance',st['header'])]]
             for name in sorted(agg):
-                d=agg[name]; den=d['pass']+d['fail']; pct=round(d['pass']*100/den,1) if den else 0
+                d=agg[name]; den=d['pass']+d['fail']+d['ofi']; pct=round(d['pass']*100/den,1) if den else 0
                 rows.append([Paragraph(name,st['small']),Paragraph(str(d['pass']),st['small']),Paragraph(str(d['fail']),st['small']),Paragraph(f'<b>{pct:.1f}%</b>',ParagraphStyle('sc',fontSize=7.2,textColor=score_color(pct),fontName='Helvetica-Bold',alignment=TA_CENTER)),make_bar(pct,4*cm,0.17*cm)])
             tb=Table(rows,colWidths=[5.5*cm,1.7*cm,2.1*cm,1.7*cm,content_width-11.0*cm],repeatRows=1)
             tb.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,GRAY_LIGHT]),('BOX',(0,0),(-1,-1),0.5,BORDER),('INNERGRID',(0,0),(-1,-1),0.35,BORDER),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('ALIGN',(1,1),(3,-1),'CENTER'),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),5)]))
@@ -431,7 +459,7 @@ def generate_pdf(audit_id_str, site_id=None):
         bt.setStyle(TableStyle([('ROWBACKGROUNDS',(0,0),(-1,-1),[GRAY_LIGHT,WHITE]),('BOX',(0,0),(-1,-1),0.5,BORDER),('INNERGRID',(0,0),(-1,-1),0.35,BORDER),('LEFTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
         elements += [bt,Spacer(1,0.45*cm),Paragraph('Site Capacity &amp; Configuration',ParagraphStyle('subh2',fontSize=8.5,textColor=NAVY,fontName='Helvetica-Bold')),Spacer(1,3)]
         if site_detail:
-            site=[['No. of Blocks',site_detail.no_of_blocks],['DC Capacity (MWp)',site_detail.dc_capacity],['AC Capacity (MVA)',site_detail.ac_capacity],['Central Inverter',site_detail.central_inverter_type],['Central Inverter Count',site_detail.central_inverter_count],['String Inverter',site_detail.string_inverter_type],['String Inverter Count',site_detail.string_inverter_count],['SCB Count',site_detail.scb_count],['MMS Type / Count',f'{safe(site_detail.mms_type)} / {safe(site_detail.mms_count)}'],['Transformer Type / Count',f'{safe(site_detail.transformer_type)} / {safe(site_detail.transformer_count)}'],['LT Panel Type / Count',f'{safe(site_detail.lt_panel_type)} / {safe(site_detail.lt_panel_count)}'],['HT Panel Type / Count',f'{safe(site_detail.ht_panel_type)} / {safe(site_detail.ht_panel_count)}'],['ACDB Count',site_detail.acdb_count],['UPS DB + Battery Count',site_detail.ups_db_battery_count],['Lightning Protection',site_detail.lightning_protection_count],['DC Earthing',site_detail.dc_earthing],['AC Earthing',site_detail.ac_earthing]]
+            site=[['No. of Blocks',site_detail.no_of_blocks],['DC Capacity (MWp)',site_detail.dc_capacity],['AC Capacity (MVA)',site_detail.ac_capacity],['Central Inverter',site_detail.central_inverter_type],['Central Inverter Count',site_detail.central_inverter_count],['String Inverter',site_detail.string_inverter_type],['String Inverter Count',site_detail.string_inverter_count],['SCB Count',site_detail.scb_count],['MMS Type / Count',f'{safe(site_detail.mms_type)} / {safe(site_detail.mms_count)}'],['Transformer Type / Count',f'{safe(site_detail.transformer_type)} / {safe(site_detail.transformer_count)}'],['LT Panel Type / Count',f'{safe(site_detail.lt_panel_type)} / {safe(site_detail.lt_panel_count)}'],['HT Panel Type / Count',f'{safe(site_detail.ht_panel_type)} / {safe(site_detail.ht_panel_count)}'],['ACDB Count',site_detail.acdb_count],['UPS Type / Battery Count',f'{safe(site_detail.ups_type)} / {safe(site_detail.ups_db_battery_count)}']]
             stbl=Table([[Paragraph(k,st['label']),Paragraph(safe(v),st['small'])] for k,v in site],colWidths=[5.5*cm,content_width-5.5*cm])
             stbl.setStyle(TableStyle([('ROWBACKGROUNDS',(0,0),(-1,-1),[WHITE,GRAY_LIGHT]),('BOX',(0,0),(-1,-1),0.5,BORDER),('INNERGRID',(0,0),(-1,-1),0.35,BORDER),('LEFTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),3.5),('BOTTOMPADDING',(0,0),(-1,-1),3.5)]))
             elements.append(stbl)
@@ -448,7 +476,7 @@ def generate_pdf(audit_id_str, site_id=None):
         audit_assets=session.query(AuditAsset,Asset,AssetType).join(Asset,AuditAsset.asset_id==Asset.id).join(AssetType,Asset.asset_type_id==AssetType.id).filter(AuditAsset.audit_id==audit.id).order_by(AssetType.name,Asset.asset_name).all()
         for idx,(aa,asset,atype) in enumerate(audit_assets,1):
             responses=session.query(AuditResponse,AuditQuestion,AuditSection).join(AuditQuestion,AuditResponse.question_id==AuditQuestion.id).join(AuditSection,AuditQuestion.section_id==AuditSection.id).filter(AuditResponse.audit_id==audit.id,AuditResponse.asset_id==asset.id).order_by(AuditSection.section_order,AuditQuestion.question_order).all()
-            p=sum(1 for r,_,_ in responses if (r.response_status or '').lower()=='pass'); f=sum(1 for r,_,_ in responses if (r.response_status or '').lower()=='fail'); den=p+f; pct=round(p*100/den,1) if den else 0
+            p=sum(1 for r,_,_ in responses if (r.response_status or '').lower()=='pass'); f=sum(1 for r,_,_ in responses if (r.response_status or '').lower()=='fail'); o=sum(1 for r,_,_ in responses if (r.response_status or '').lower()=='ofi'); den=p+f+o; pct=round(p*100/den,1) if den else 0
 
             title=Table([[Paragraph(f'{idx:02d}  {safe(asset.asset_name)}  |  {safe(atype.name)}',st['equip']),Paragraph(f'{pct:.0f}%',ParagraphStyle(f'ep{idx}',fontSize=9,textColor=WHITE,fontName='Helvetica-Bold',alignment=TA_RIGHT))]],colWidths=[content_width-2*cm,2*cm])
             title.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),NAVY),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5)]))
@@ -467,8 +495,8 @@ def generate_pdf(audit_id_str, site_id=None):
                 for i,(resp,q,sec) in enumerate(responses,1):
                     if sec.name!=last:
                         rows.append(['',Paragraph(f'<b>{safe(sec.name)}</b>',ParagraphStyle(f'grp{idx}_{i}',fontSize=7,textColor=GREEN_DARK,fontName='Helvetica-Bold')),'','']); last=sec.name
-                    rows.append([Paragraph(str(i),st['small']),Paragraph(safe(q.question_text),st['small']),Paragraph(resp_label(resp.response_status, getattr(resp, 'ofi_category', None)),ParagraphStyle(f's{idx}_{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if (resp.response_status or '').lower()=='pass' else RED if (resp.response_status or '').lower()=='fail' else GRAY),alignment=TA_CENTER)),Paragraph(safe(resp.remarks,''),st['small'])])
-                qt=Table(rows,colWidths=[0.55*cm,8.2*cm,2.3*cm,content_width-11.05*cm],repeatRows=1)
+                    rows.append([Paragraph(f'<a name="cp_eq_{idx}_{i}"/>{i}',st['small']),Paragraph(safe(q.question_text),st['small']),Paragraph(resp_label(resp.response_status, getattr(resp, 'ofi_category', None)),ParagraphStyle(f's{idx}_{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=result_color(resp.response_status, resp.id),alignment=TA_CENTER)),Paragraph(safe(resp.remarks,''),st['small'])])
+                qt=Table(rows,colWidths=[0.95*cm,7.9*cm,2.3*cm,content_width-11.15*cm],repeatRows=1)
                 qt.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY_2),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,HexColor('#FAFBFC')]),('BOX',(0,0),(-1,-1),0.45,BORDER),('INNERGRID',(0,0),(-1,-1),0.3,BORDER),('VALIGN',(0,0),(-1,-1),'TOP'),('ALIGN',(0,1),(0,-1),'CENTER'),('ALIGN',(2,1),(2,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3)]))
                 # Highlight section rows and span their cells.
                 r=1; last=None
@@ -477,7 +505,7 @@ def generate_pdf(audit_id_str, site_id=None):
                         qt.setStyle(TableStyle([('SPAN',(1,r),(3,r)),('BACKGROUND',(0,r),(-1,r),GREEN_LIGHT)])); r+=1; last=sec.name
                     r+=1
                 elements.append(qt)
-                elements.extend(_photo_evidence(session, responses, content_width, st))
+                elements.extend(_photo_evidence(session, responses, content_width, st, anchor_prefix=f'cp_eq_{idx}'))
             else:
                 elements.append(Paragraph('No inspection responses recorded for this equipment.',st['small']))
             elements.append(Spacer(1,0.28*cm))
@@ -500,13 +528,13 @@ def generate_pdf(audit_id_str, site_id=None):
             rows=[[Paragraph('#',st['header']),Paragraph('Safety Checkpoint',st['header']),Paragraph('Result',st['header']),Paragraph('Remarks',st['header'])]]
             for i,(resp,q,sec) in enumerate(safety_rows,1):
                 stt=(resp.response_status or '').lower()
-                rows.append([Paragraph(str(i),st['small']),Paragraph(safe(q.question_text),st['small']),
-                             Paragraph(resp_label(stt, getattr(resp, 'ofi_category', None)),ParagraphStyle(f'sf{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if stt=='pass' else RED if stt=='fail' else GRAY),alignment=TA_CENTER)),
+                rows.append([Paragraph(f'<a name="cp_sf_{i}"/>{i}',st['small']),Paragraph(safe(q.question_text),st['small']),
+                             Paragraph(resp_label(stt, getattr(resp, 'ofi_category', None)),ParagraphStyle(f'sf{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=result_color(stt, resp.id),alignment=TA_CENTER)),
                              Paragraph(safe(resp.remarks,''),st['small'])])
-            sft=Table(rows,colWidths=[0.55*cm,8.2*cm,2.3*cm,content_width-11.05*cm],repeatRows=1)
+            sft=Table(rows,colWidths=[0.95*cm,7.9*cm,2.3*cm,content_width-11.15*cm],repeatRows=1)
             sft.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY_2),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,HexColor('#FAFBFC')]),('BOX',(0,0),(-1,-1),0.45,BORDER),('INNERGRID',(0,0),(-1,-1),0.3,BORDER),('VALIGN',(0,0),(-1,-1),'TOP'),('ALIGN',(0,1),(0,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3)]))
             elements.append(sft)
-            elements.extend(_photo_evidence(session, safety_rows, content_width, st))
+            elements.extend(_photo_evidence(session, safety_rows, content_width, st, anchor_prefix='cp_sf'))
             elements.append(PageBreak())
 
         # ------------------------------------------------------------------
@@ -523,13 +551,13 @@ def generate_pdf(audit_id_str, site_id=None):
             rows=[[Paragraph('#',st['header']),Paragraph('Civil / Infrastructure Checkpoint',st['header']),Paragraph('Result',st['header']),Paragraph('Remarks',st['header'])]]
             for i,(resp,q,sec) in enumerate(civil_rows,1):
                 stt=(resp.response_status or '').lower()
-                rows.append([Paragraph(str(i),st['small']),Paragraph(safe(q.question_text),st['small']),
-                             Paragraph(resp_label(stt, getattr(resp, 'ofi_category', None)),ParagraphStyle(f'sf{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=(GREEN_DARK if stt=='pass' else RED if stt=='fail' else GRAY),alignment=TA_CENTER)),
+                rows.append([Paragraph(f'<a name="cp_cv_{i}"/>{i}',st['small']),Paragraph(safe(q.question_text),st['small']),
+                             Paragraph(resp_label(stt, getattr(resp, 'ofi_category', None)),ParagraphStyle(f'sf{i}',fontSize=7.2,fontName='Helvetica-Bold',textColor=result_color(stt, resp.id),alignment=TA_CENTER)),
                              Paragraph(safe(resp.remarks,''),st['small'])])
-            cvt=Table(rows,colWidths=[0.55*cm,8.2*cm,2.3*cm,content_width-11.05*cm],repeatRows=1)
+            cvt=Table(rows,colWidths=[0.95*cm,7.9*cm,2.3*cm,content_width-11.15*cm],repeatRows=1)
             cvt.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY_2),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,HexColor('#FAFBFC')]),('BOX',(0,0),(-1,-1),0.45,BORDER),('INNERGRID',(0,0),(-1,-1),0.3,BORDER),('VALIGN',(0,0),(-1,-1),'TOP'),('ALIGN',(0,1),(0,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3)]))
             elements.append(cvt)
-            elements.extend(_photo_evidence(session, civil_rows, content_width, st))
+            elements.extend(_photo_evidence(session, civil_rows, content_width, st, anchor_prefix='cp_cv'))
             elements.append(PageBreak())
 
         # ------------------------------------------------------------------
@@ -567,7 +595,7 @@ def generate_pdf(audit_id_str, site_id=None):
                              Paragraph(safe(ob.responsible_person),st['small']),
                              Paragraph(safe(ob.target_date),st['small']),
                              Paragraph(display_status(ob),st['small'])])
-            ct=Table(rows,colWidths=[0.5*cm,1.0*cm,3.8*cm,4.2*cm,1.4*cm,2.1*cm,1.7*cm,content_width-14.7*cm],repeatRows=1)
+            ct=Table(rows,colWidths=[0.85*cm,1.05*cm,3.65*cm,4.05*cm,1.4*cm,2.1*cm,1.7*cm,content_width-14.8*cm],repeatRows=1)
             ct.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,HexColor('#FAFBFC')]),('BOX',(0,0),(-1,-1),0.5,BORDER),('INNERGRID',(0,0),(-1,-1),0.35,BORDER),('VALIGN',(0,0),(-1,-1),'TOP'),('ALIGN',(0,1),(0,-1),'CENTER'),('ALIGN',(4,1),(4,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
             elements += [ct, Spacer(1,3), Paragraph(f'Status as of {datetime.now().strftime("%d %b %Y, %H:%M")}. Photo evidence for each observation appears under its checkpoint in the equipment / safety sections above.',st['subtitle'])]
         else:

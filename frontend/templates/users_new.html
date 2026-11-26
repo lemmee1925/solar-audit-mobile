@@ -40,7 +40,9 @@
         <select id="role" name="role" required onchange="soUpdatePlantVisibility()">
           <option value="user" {% if user is defined and user.role == 'user' %}selected{% endif %}>User — restricted access within the assigned site</option>
           <option value="engineer" {% if user is defined and user.role == 'engineer' %}selected{% endif %}>Engineer — assigned plants and audit workflows</option>
+          {% if creatable_roles is not defined or 'site_admin' in creatable_roles %}
           <option value="site_admin" {% if user is defined and user.role == 'site_admin' %}selected{% endif %}>Site Admin — full administration of this site</option>
+          {% endif %}
         </select>
       </div>
     </div>

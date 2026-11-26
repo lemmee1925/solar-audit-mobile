@@ -1,0 +1,99 @@
+SOLAR AUDIT PLATFORM - SCORING & RATING LOGIC
+==============================================
+
+This document explains the mathematical scoring rules used identically across:
+  - Backend / Website (backend/site_scope.py)
+  - Website PDF Report (backend/pdf_report.py)
+  - Android Mobile App & App PDF Report (solar-audit-android/src/App.tsx)
+
+
+1. CHECKPOINT STATUSES
+----------------------
+Each checkpoint in an audit is recorded as one of:
+  - Compliant (C / pass)
+      The checkpoint passed fully. Earns full credit = 1.00 (100%).
+  - Opportunity for Improvement (OFI / ofi)
+      The checkpoint needs improvement. Earns partial credit (< 1.00) based on
+      BOTH its OFI Category (business impact) and Observation Severity.
+  - Not Applicable (NA / na)
+      The checkpoint was not checked or is not applicable.
+      Excluded from BOTH numerator (earned points) and denominator (max points).
+  - Not Complied (NC / fail) [Legacy audits]
+      Earns 0.00 credit and adds its severity weight (Minor=1.0, Major=3.0,
+      Critical=5.0) to max points.
+
+
+2. OFI SCORING MATRIX (CATEGORY x SEVERITY)
+-------------------------------------------
+Each OFI checkpoint has a Category Impact (0.0 to 1.0) and a Severity Factor:
+
+  OFI Category Business Impact:
+    - Safety        : 1.00  (Highest risk - personnel & life safety)
+    - Reliability   : 0.75  (High risk - plant uptime & equipment life)
+    - Profitability : 0.55  (Medium risk - generation yield & O&M cost)
+    - Aesthetic     : 0.25  (Low risk - housekeeping & visual condition)
+    (Default if missing: Reliability = 0.75)
+
+  Observation Severity Factor:
+    - Minor         : 0.30
+    - Major         : 0.60
+    - Critical      : 1.00
+    (Default if missing: Major = 0.60)
+
+  Formula for Earned Credit per OFI Checkpoint (out of 1.00):
+    earned_credit = max(0.0, 1.0 - (category_impact * severity_factor))
+
+  Resulting Earned Credit Table:
+    +---------------+--------+--------+----------+
+    | OFI Category  | Minor  | Major  | Critical |
+    +---------------+--------+--------+----------+
+    | Safety        | 0.700  | 0.400  |  0.000   |
+    | Reliability   | 0.775  | 0.550  |  0.250   |
+    | Profitability | 0.835  | 0.670  |  0.450   |
+    | Aesthetic     | 0.925  | 0.850  |  0.750   |
+    +---------------+--------+--------+----------+
+
+
+3. OVERALL AUDIT METRICS
+------------------------
+  applicable_checkpoints = count(C) + count(OFI) + count(NC)
+
+  Compliance % (Pure Pass Rate):
+    compliance_pct = (count(C) / applicable_checkpoints) * 100
+    (0.0% if applicable_checkpoints == 0)
+
+  Weighted Audit Score %:
+    audit_score_pct = (sum(earned_points) / sum(max_points)) * 100
+    (0.0% if max_points == 0)
+
+  Audit Coverage %:
+    coverage_pct = (applicable_checkpoints / (applicable_checkpoints + count(NA))) * 100
+
+
+4. SITE RATING BANDS & SAFETY CAP
+---------------------------------
+  - applicable_checkpoints == 0  ->  "Not Rated"
+  - audit_score_pct >= 90        ->  "Excellent"
+  - audit_score_pct >= 75        ->  "Good"
+  - audit_score_pct >= 60        ->  "Needs Improvement"
+  - audit_score_pct <  60        ->  "Poor"
+
+  Safety Override Cap:
+    If the audit has ANY Critical Safety OFI (category == "Safety" and
+    severity == "Critical"), the Site Rating is capped at "Needs Improvement"
+    and cannot be "Good" or "Excellent".
+
+
+5. WORKED EXAMPLE
+-----------------
+Suppose an audit has 12 checkpoints:
+  - 8 Compliant (C)                     ->  8 * 1.000 = 8.000 earned  (8.0 max)
+  - 1 OFI: Aesthetic + Minor            ->  1 * 0.925 = 0.925 earned  (1.0 max)
+  - 1 OFI: Safety + Major               ->  1 * 0.400 = 0.400 earned  (1.0 max)
+  - 2 Not Applicable (NA)               ->  excluded
+
+  applicable_checkpoints = 8 + 2 = 10
+  Compliance %  = (8 / 10) * 100 = 80.0%
+  Audit Score % = ((8.000 + 0.925 + 0.400) / 10.0) * 100 = 93.3%
+  Site Rating   = "Excellent" (no Critical Safety OFI)
+  Coverage %    = (10 / 12) * 100 = 83.3%

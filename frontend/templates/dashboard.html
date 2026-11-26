@@ -3,7 +3,7 @@
 
 {% block extra_style %}
 .eyebrow { font-family: sans-serif; font-size: 10.5px; font-weight: 500; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
 .hero-title { font-family: sans-serif; font-size: 26px; font-weight: 500; color: var(--ink); }
 .hero-sub { font-size: 13.5px; color: var(--ink-2); margin-top: 4px; }
 
@@ -11,7 +11,7 @@
 .hero-grid > *, .ov-two > * { min-width: 0; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; }
 .panel-label { font-family: sans-serif; font-size: 10.5px; font-weight: 500; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--ink-3); }
+text-transform: uppercase; color: var(--ink-3); }
 
 .health-row { display: flex; align-items: flex-end; gap: 14px; margin-top: 10px; }
 .health-score { font-family: sans-serif; font-size: 52px; font-weight: 500; color: var(--ink); line-height: 1; }
@@ -40,12 +40,12 @@
 .section-title { font-family: sans-serif; font-size: 19px; font-weight: 500; color: var(--ink); }
 
 .attn-list { display: flex; flex-direction: column; gap: 1px; background: var(--line);
-  border: 1px solid var(--line); border-radius: 12px; overflow-y: auto; max-height: 330px; }
+border: 1px solid var(--line); border-radius: 12px; overflow-y: auto; max-height: 330px; }
 .attn-row { background: var(--surface); display: grid; grid-template-columns: 108px 1fr auto;
-  align-items: center; gap: 16px; padding: 16px 20px; text-decoration: none; transition: background .12s; }
+align-items: center; gap: 16px; padding: 16px 20px; text-decoration: none; transition: background .12s; }
 .attn-row:hover { background: #FAFAF6; }
 .attn-tag { font-family: sans-serif; font-size: 10px; font-weight: 600; letter-spacing: .08em;
-  padding: 3px 8px; border-radius: 5px; text-transform: uppercase; width: fit-content; }
+padding: 3px 8px; border-radius: 5px; text-transform: uppercase; width: fit-content; }
 .tag-critical { background: var(--critical-soft); color: var(--critical); }
 .tag-high { background: var(--high-soft); color: var(--high); }
 .tag-upcoming { background: var(--accent-soft); color: var(--accent-d); }
@@ -65,9 +65,9 @@
 .progress-pct { font-family: sans-serif; font-size: 12px; color: var(--ink-2); width: 32px; }
 
 .findings-list { display: flex; flex-direction: column; gap: 1px; background: var(--line);
-  border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .finding-row { background: var(--surface); display: grid; grid-template-columns: 14px 1fr auto;
-  align-items: center; gap: 14px; padding: 14px 20px; }
+align-items: center; gap: 14px; padding: 14px 20px; }
 .finding-dot { width: 8px; height: 8px; border-radius: 50%; }
 .fd-critical { background: var(--critical); } .fd-high { background: var(--high); }
 .fd-medium { background: var(--medium); } .fd-low { background: var(--low); }
@@ -77,7 +77,8 @@
 
 .rating-big { font-size: 26px; font-weight: 600; color: var(--ink); margin-top: 10px; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-.kpi { display: block; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.kpi { display: block; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius:
+12px; padding: 14px 16px; min-width: 0; }
 .kpi-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .overview-kpis { margin: 18px 0 16px; }
 .kpi-value-small { font-size: 18px; line-height: 1.25; word-break: break-word; }
@@ -90,51 +91,67 @@
 .kpi.k-critical .kpi-value { color: var(--critical); } .kpi.k-major .kpi-value { color: var(--high); }
 .kpi.k-minor .kpi-value { color: var(--medium); } .kpi.k-ok .kpi-value { color: var(--low); }
 .ov-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-.bar-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) 36px; align-items: center; gap: 10px; margin-top: 12px; }
+.bar-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) 36px; align-items: center; gap: 10px; margin-top:
+12px; }
 .bar-name { font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .bar-track { height: 8px; border-radius: 4px; background: var(--bg); overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 4px; background: var(--accent); }
 .bar-count { font-size: 13px; text-align: right; color: var(--ink); font-weight: 600; }
 a.finding-row { text-decoration: none; }
-.metric-details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); }
+.metric-details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content:
+space-between; gap: 12px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color:
+var(--ink-2); }
 .metric-details > summary::-webkit-details-marker { display: none; }
 .metric-chevron { font-size: 18px; line-height: 1; transition: transform .15s ease; }
 .metric-details[open] .metric-chevron { transform: rotate(180deg); }
 .metric-details .metric-grid { margin-top: 14px; }
 @media (max-width: 1100px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) {
-  .hero-grid, .ov-two { grid-template-columns: minmax(0, 1fr); }
-  .attn-row { grid-template-columns: 1fr; }
-  .finding-row { grid-template-columns: 1fr; }
+.hero-grid, .ov-two { grid-template-columns: minmax(0, 1fr); }
+.attn-row { grid-template-columns: 1fr; }
+.finding-row { grid-template-columns: 1fr; }
 }
 {% endblock %}
 
 {% block content %}
 <div class="eyebrow">Audit Command Center</div>
 {% set h = now_hour|default(12)|int %}
-{% set greeting = 'Good morning' if h < 12 else ('Good afternoon' if h < 17 else 'Good evening') %}
-<div class="hero-title">{{ greeting }}, {{ (current_user.full_name or current_user.username).split(' ')[0] }}.</div>
-<div class="hero-sub">Here's the current audit pulse across {{ total_plants }} plant{{ 's' if total_plants != 1 else '' }} and {{ total_audits }} audit{{ 's' if total_audits != 1 else '' }}.</div>
+{% set greeting = 'Good morning' if h < 12 else ('Good afternoon' if h < 17 else 'Good evening' ) %} <div
+  class="hero-title">{{ greeting }}, {{ (current_user.full_name or current_user.username).split(' ')[0] }}.</div>
+  <div class="hero-sub">Here's the current audit pulse across {{ total_plants }} plant{{ 's' if total_plants != 1 else
+    '' }} and {{ total_audits }} audit{{ 's' if total_audits != 1 else '' }}.</div>
 
-<div class="kpi-grid overview-kpis">
-  <div class="kpi"><div class="kpi-label">Latest Audit Number</div><div class="kpi-value kpi-value-small">{{ latest_audit_number }}</div></div>
-  <a class="kpi" href="{{ url_for('audits') }}?status=draft"><div class="kpi-label">Draft Audits</div><div class="kpi-value">{{ draft_audits_count }}</div></a>
-  <a class="kpi k-ok" href="{{ url_for('audits') }}?status=submitted"><div class="kpi-label">Closed Audits</div><div class="kpi-value">{{ closed_audits_count }}</div></a>
-  <div class="kpi"><div class="kpi-label">Total Audits</div><div class="kpi-value">{{ total_audits }}</div></div>
-</div>
+  <div class="kpi-grid overview-kpis">
+    <div class="kpi">
+      <div class="kpi-label">Latest Audit Number</div>
+      <div class="kpi-value kpi-value-small">{{ latest_audit_number }}</div>
+    </div>
+    <a class="kpi" href="{{ url_for('audits') }}?status=draft">
+      <div class="kpi-label">Draft Audits</div>
+      <div class="kpi-value">{{ draft_audits_count }}</div>
+    </a>
+    <a class="kpi k-ok" href="{{ url_for('audits') }}?status=submitted">
+      <div class="kpi-label">Closed Audits</div>
+      <div class="kpi-value">{{ closed_audits_count }}</div>
+    </a>
+    <div class="kpi">
+      <div class="kpi-label">Total Audits</div>
+      <div class="kpi-value">{{ total_audits }}</div>
+    </div>
+  </div>
 
-<div class="hero-grid">
-  <div class="panel">
-    <div class="panel-label">Audit Health</div>
-    <div class="health-row">
-      <div class="health-score">{{ audit_health }}</div>
-      <div class="health-of100">/ 100</div>
-      {% if pulse_delta > 0 %}
+  <div class="hero-grid">
+    <div class="panel">
+      <div class="panel-label">Audit Health</div>
+      <div class="health-row">
+        <div class="health-score">{{ audit_health }}</div>
+        <div class="health-of100">/ 100</div>
+        {% if pulse_delta > 0 %}
         <div class="health-delta delta-up">↑ {{ pulse_delta }} pts / 14d</div>
-      {% elif pulse_delta < 0 %}
-        <div class="health-delta delta-down">↓ {{ pulse_delta|abs }} pts / 14d</div>
+        {% elif pulse_delta < 0 %} <div class="health-delta delta-down">↓ {{ pulse_delta|abs }} pts / 14d
+      </div>
       {% else %}
-        <div class="health-delta delta-flat">— steady / 14d</div>
+      <div class="health-delta delta-flat">— steady / 14d</div>
       {% endif %}
     </div>
 
@@ -146,14 +163,14 @@ a.finding-row { text-decoration: none; }
     {% set prange = (pmax - pmin) if (pmax - pmin) > 0 else 1 %}
     {% set pts = [] %}
     {% for v in pulse_points %}
-      {% set x = ((loop.index0 / (n-1)) * w) if n > 1 else 0 %}
-      {% set y = h - (((v - pmin) / prange) * (h - 10)) - 5 %}
-      {% set _ = pts.append(x|round(1)|string ~ ',' ~ y|round(1)|string) %}
+    {% set x = ((loop.index0 / (n-1)) * w) if n > 1 else 0 %}
+    {% set y = h - (((v - pmin) / prange) * (h - 10)) - 5 %}
+    {% set _ = pts.append(x|round(1)|string ~ ',' ~ y|round(1)|string) %}
     {% endfor %}
     <div class="pulse-wrap">
       <svg class="pulse-svg" viewBox="0 0 {{ w }} {{ h }}" preserveAspectRatio="none">
-        <polyline points="{{ pts|join(' ') }}" fill="none" stroke="#1E5C42" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
+        <polyline points="{{ pts|join(' ') }}" fill="none" stroke="#1E5C42" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" opacity="0.85" />
       </svg>
       <div class="pulse-caption">Rolling pass-rate, last 14 days of recorded checks.</div>
     </div>
@@ -161,7 +178,10 @@ a.finding-row { text-decoration: none; }
   <div class="panel">
     <div class="panel-label">Audit score &amp; site rating</div>
     {% if avg_score is not none %}
-    <div class="health-row"><div class="health-score">{{ '%.0f'|format(avg_score) }}</div><div class="health-of100">%</div></div>
+    <div class="health-row">
+      <div class="health-score">{{ '%.0f'|format(avg_score) }}</div>
+      <div class="health-of100">%</div>
+    </div>
     <div class="rating-big">{{ site_rating }}</div>
     <div class="pulse-caption">Average severity-weighted score of submitted audits.</div>
     {% else %}
@@ -169,69 +189,121 @@ a.finding-row { text-decoration: none; }
     <div class="pulse-caption">The score appears once an audit is submitted.</div>
     {% endif %}
   </div>
-</div>
+  </div>
 
-<div class="panel metric-guide">
-  <details class="metric-details">
-    <summary>How the dashboard metrics work <span class="metric-chevron" aria-hidden="true">⌄</span></summary>
-    <div class="metric-grid">
-      <div><strong>Audit Health</strong><span>Pass-rate of all recorded checkpoints: Passed ÷ Recorded × 100. C/NC/NA is counted at checkpoint level; it is not severity-weighted.</span></div>
-      <div><strong>Audit Score</strong><span>Severity-weighted submitted-audit score. Complied = 1×, Minor NC = 1×, Major NC = 3×, Critical NC = 5×.</span></div>
-      <div><strong>Site Rating</strong><span>Excellent ≥90, Good 75–89, Needs Improvement 60–74, Poor &lt;60.</span></div>
-      <div><strong>Pulse</strong><span>Rolling checkpoint pass-rate by day over the last 14 days, showing recent movement rather than audit count.</span></div>
+  <div class="panel metric-guide">
+    <details class="metric-details">
+      <summary>How the dashboard metrics work <span class="metric-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="metric-grid">
+        <div><strong>Audit Health: </strong><span>Pass-rate of applicable checkpoints: Complied ÷ (Complied + OFI) ×
+            100. NA checkpoints are excluded.</span></div>
+        <div><strong>Audit Score: </strong><span>Weighted submitted-audit score. Complied = 1.00; OFI earns 1 −
+            (Category Impact × Severity Factor) with Safety=1.00, Reliability=0.75, Profitability=0.55, Aesthetic=0.25
+            and Minor=0.30, Major=0.60, Critical=1.00.</span></div>
+        <div><strong>Site Rating: </strong><span>Excellent ≥90, Good 75–89, Needs Improvement 60–74, Poor &lt;60 (capped
+            at Needs Improvement if any Critical Safety OFI exists).</span></div>
+        <div><strong>Pulse: </strong><span>Rolling applicable-checkpoint pass-rate by day over the last 14 days, showing
+            recent movement rather than audit count.</span></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="section-title-row">
+    <div class="section-title">Observations</div>
+  </div>
+  <div class="kpi-grid">
+    <a class="kpi" href="{{ url_for('observations_list') }}">
+      <div class="kpi-label">Total</div>
+      <div class="kpi-value">{{ obs_kpi.total }}</div>
+    </a>
+    <a class="kpi k-critical" href="{{ url_for('observations_list', severity='critical') }}">
+      <div class="kpi-label">Critical</div>
+      <div class="kpi-value">{{ obs_kpi.critical }}</div>
+    </a>
+    <a class="kpi k-major" href="{{ url_for('observations_list', severity='major') }}">
+      <div class="kpi-label">Major</div>
+      <div class="kpi-value">{{ obs_kpi.major }}</div>
+    </a>
+    <a class="kpi k-minor" href="{{ url_for('observations_list', severity='minor') }}">
+      <div class="kpi-label">Minor</div>
+      <div class="kpi-value">{{ obs_kpi.minor }}</div>
+    </a>
+    <a class="kpi" href="{{ url_for('observations_list', status='unfinished') }}">
+      <div class="kpi-label">Open</div>
+      <div class="kpi-value">{{ obs_kpi.open }}</div>
+    </a>
+    <a class="kpi k-ok" href="{{ url_for('observations_list', status='closed') }}">
+      <div class="kpi-label">Closed</div>
+      <div class="kpi-value">{{ obs_kpi.closed }}</div>
+    </a>
+    <a class="kpi k-critical" href="{{ url_for('observations_list', status='overdue') }}">
+      <div class="kpi-label">Overdue</div>
+      <div class="kpi-value">{{ obs_kpi.overdue }}</div>
+    </a>
+    <div class="kpi">
+      <div class="kpi-label">Closure rate</div>
+      <div class="kpi-value">{{ '%.0f'|format(obs_kpi.closure_pct) }}%</div>
     </div>
-  </details>
-</div>
+  </div>
+  <div class="ov-two">
+    <div class="panel">
+      <div class="panel-label">Open observation ageing</div>
+      {% set amax = (ageing|map(attribute='count')|max) or 1 %}
+      {% for b in ageing %}
+      <div class="bar-row">
+        <div class="bar-name">{{ b.label }}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width: {{ (b.count * 100 / amax)|round(0) }}%"></div>
+        </div>
+        <div class="bar-count">{{ b.count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="panel" style="padding: 0; overflow-x: auto;">
+      <table class="portfolio-table">
+        <thead>
+          <tr>
+            <th>Plant</th>
+            <th>Score</th>
+            <th>Rating</th>
+            <th>Open</th>
+            <th>Overdue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in site_perf %}
+          <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ ('%.1f%%'|format(p.score)) if p.score is not none else '—' }}</td>
+            <td>{{ p.rating }}</td>
+            <td>{{ p.open }}</td>
+            <td>{{ p.overdue }}</td>
+          </tr>
+          {% else %}<tr>
+            <td colspan="5" style="color: var(--ink-3);">No plants yet.</td>
+          </tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-<div class="section-title-row"><div class="section-title">Observations</div></div>
-<div class="kpi-grid">
-  <a class="kpi" href="{{ url_for('observations_list') }}"><div class="kpi-label">Total</div><div class="kpi-value">{{ obs_kpi.total }}</div></a>
-  <a class="kpi k-critical" href="{{ url_for('observations_list', severity='critical') }}"><div class="kpi-label">Critical</div><div class="kpi-value">{{ obs_kpi.critical }}</div></a>
-  <a class="kpi k-major" href="{{ url_for('observations_list', severity='major') }}"><div class="kpi-label">Major</div><div class="kpi-value">{{ obs_kpi.major }}</div></a>
-  <a class="kpi k-minor" href="{{ url_for('observations_list', severity='minor') }}"><div class="kpi-label">Minor</div><div class="kpi-value">{{ obs_kpi.minor }}</div></a>
-  <a class="kpi" href="{{ url_for('observations_list', status='unfinished') }}"><div class="kpi-label">Open</div><div class="kpi-value">{{ obs_kpi.open }}</div></a>
-  <a class="kpi k-ok" href="{{ url_for('observations_list', status='closed') }}"><div class="kpi-label">Closed</div><div class="kpi-value">{{ obs_kpi.closed }}</div></a>
-  <a class="kpi k-critical" href="{{ url_for('observations_list', status='overdue') }}"><div class="kpi-label">Overdue</div><div class="kpi-value">{{ obs_kpi.overdue }}</div></a>
-  <div class="kpi"><div class="kpi-label">Closure rate</div><div class="kpi-value">{{ '%.0f'|format(obs_kpi.closure_pct) }}%</div></div>
-</div>
-<div class="ov-two">
-  <div class="panel">
-    <div class="panel-label">Open observation ageing</div>
-    {% set amax = (ageing|map(attribute='count')|max) or 1 %}
-    {% for b in ageing %}
-    <div class="bar-row"><div class="bar-name">{{ b.label }}</div>
-      <div class="bar-track"><div class="bar-fill" style="width: {{ (b.count * 100 / amax)|round(0) }}%"></div></div>
-      <div class="bar-count">{{ b.count }}</div></div>
+  <div class="section-title-row">
+    <div class="section-title">{{ attention|length }} thing{{ 's' if attention|length != 1 else '' }} need{{ '' if
+      attention|length != 1 else 's' }} your attention</div>
+  </div>
+  <div class="attn-list">
+    {% for item in attention %}
+    <a href="{{ item.href }}" class="attn-row">
+      <span class="attn-tag tag-{{ item.level }}">{{ item.level }}</span>
+      <div>
+        <div class="attn-title">{{ item.title }}</div>
+        <div class="attn-meta">{{ item.meta }}</div>
+      </div>
+      <div class="attn-cta">{{ item.cta }} →</div>
+    </a>
+    {% else %}
+    <div class="attn-empty">Nothing urgent right now — all tracked audits and equipment are current.</div>
     {% endfor %}
   </div>
-  <div class="panel" style="padding: 0; overflow-x: auto;">
-    <table class="portfolio-table">
-      <thead><tr><th>Plant</th><th>Score</th><th>Rating</th><th>Open</th><th>Overdue</th></tr></thead>
-      <tbody>
-        {% for p in site_perf %}
-        <tr><td>{{ p.name }}</td><td>{{ ('%.1f%%'|format(p.score)) if p.score is not none else '—' }}</td><td>{{ p.rating }}</td><td>{{ p.open }}</td><td>{{ p.overdue }}</td></tr>
-        {% else %}<tr><td colspan="5" style="color: var(--ink-3);">No plants yet.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
 
-<div class="section-title-row">
-  <div class="section-title">{{ attention|length }} thing{{ 's' if attention|length != 1 else '' }} need{{ '' if attention|length != 1 else 's' }} your attention</div>
-</div>
-<div class="attn-list">
-  {% for item in attention %}
-  <a href="{{ item.href }}" class="attn-row">
-    <span class="attn-tag tag-{{ item.level }}">{{ item.level }}</span>
-    <div>
-      <div class="attn-title">{{ item.title }}</div>
-      <div class="attn-meta">{{ item.meta }}</div>
-    </div>
-    <div class="attn-cta">{{ item.cta }} →</div>
-  </a>
-  {% else %}
-  <div class="attn-empty">Nothing urgent right now — all tracked audits and equipment are current.</div>
-  {% endfor %}
-</div>
-
-{% endblock %}
+  {% endblock %}

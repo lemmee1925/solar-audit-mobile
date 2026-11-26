@@ -18,7 +18,8 @@ from sqlalchemy import func, case, or_
 from models import (Session, Plant, AssetType, Asset, AuditSection,
                     AuditQuestion, Audit, AuditSiteDetail, AuditAsset,
                     AuditResponse, AuditResponsePhoto, CorrectiveAction, User, engine,
-                    UserPlantAssignment, Observation, ObservationPhoto, ObservationEvent)
+                    UserPlantAssignment, UserSiteAccess, Site, Organization,
+                    Observation, ObservationPhoto, ObservationEvent)
 from pdf_report import generate_pdf
 from paths import (photos_dir, reports_dir, exports_dir, backups_dir,
                    data_dir, db_path, static_dir, templates_dir)
@@ -31,7 +32,9 @@ from site_scope import (SEVERITY_LABELS, STATUS_LABELS, UNFINISHED, WORKING, Wor
                         get_plant_or_404, get_audit_or_404 as _scoped_get_audit,
                         get_user_or_404, get_asset_or_404, next_audit_number,
                         assigned_plant_ids, can_access_plant)
-from role_policy import canonical_role, is_admin, is_site_admin, is_hq_admin
+from role_policy import (canonical_role, is_admin, is_site_admin, is_hq_admin,
+                         is_state_admin, is_portal_admin,
+                         creatable_roles_for, can_manage_target_user)
 from central_access import (list_accessible_sites, resolve_site_context,
                             CentralAccessError, SiteSelectionRequired, SiteAccessDenied)
 from version import APP_VERSION, EXPORT_SCHEMA_VERSION
@@ -142,7 +145,7 @@ def current_site():
         return None
     db = Session()
     try:
-        requested = flask_session.get('active_site_id') if is_hq_admin(current_user) else None
+        requested = flask_session.get('active_site_id')
         return resolve_site_context(db, current_user, requested)
     except CentralAccessError:
         return None
@@ -153,6 +156,7 @@ def current_site():
 SETUP_EXEMPT_ENDPOINTS = {
     'setup', 'static', 'uploaded_file', 'login', 'hq_dashboard',
     'hq_add_site', 'hq_deactivate_site', 'hq_reactivate_site', 'hq_return',
+    'hq_users', 'hq_users_add', 'hq_users_update', 'hq_users_reset_password', 'hq_users_toggle', 'hq_users_delete',
     'switch_site', 'logout',
 }
 _backfilled_sites = set()
@@ -167,12 +171,12 @@ def _require_site_setup():
     if CENTRAL_MODE:
         if not current_user.is_authenticated:
             return None
-        if is_hq_admin(current_user) and not flask_session.get('active_site_id'):
+        if is_portal_admin(current_user) and not flask_session.get('active_site_id'):
             return redirect(url_for('hq_dashboard'))
         site = current_site()
         if site is None:
             flask_session.pop('active_site_id', None)
-            if is_hq_admin(current_user):
+            if is_portal_admin(current_user):
                 return redirect(url_for('hq_dashboard'))
             logout_user()
             flash('Your assigned site is unavailable. Contact an administrator.', 'error')
@@ -206,12 +210,10 @@ def load_user(user_id):
             user = db.query(User).filter_by(id=user_id, is_active=True).first()
             if user is None:
                 return None
-            if is_hq_admin(user):
+            if is_portal_admin(user):
                 try: list_accessible_sites(db, user)
                 except CentralAccessError: return None
                 return user
-            if not user.site_id:
-                return None
             try: resolve_site_context(db, user)
             except CentralAccessError: return None
             return user
@@ -223,9 +225,23 @@ def load_user(user_id):
 
 @app.context_processor
 def inject_current_user():
+    acc_sites = []
+    if CENTRAL_MODE and current_user.is_authenticated:
+        _db = Session()
+        try:
+            acc_sites = list_accessible_sites(_db, current_user)
+        except CentralAccessError:
+            acc_sites = []
+        finally:
+            _db.close()
     return {'current_user': current_user, 'central_mode': CENTRAL_MODE,
             'active_site_context': current_site() if current_user.is_authenticated else None,
             'is_hq_admin': is_hq_admin(current_user) if current_user.is_authenticated else False,
+            'is_state_admin': is_state_admin(current_user) if current_user.is_authenticated else False,
+            'is_portal_admin': is_portal_admin(current_user) if current_user.is_authenticated else False,
+            'accessible_sites': acc_sites,
+            'creatable_roles_for': creatable_roles_for,
+            'can_manage_target_user': can_manage_target_user,
             'canonical_role': canonical_role}
 
 def admin_required(f):
@@ -246,7 +262,7 @@ def admin_or_engineer_required(f):
         if not current_user.is_authenticated:
             flash('Please log in first.', 'error')
             return redirect(url_for('login'))
-        if canonical_role(current_user.role) not in ['hq_admin', 'site_admin', 'engineer']:
+        if canonical_role(current_user.role) not in ['hq_admin', 'state_admin', 'site_admin', 'engineer']:
             flash('Admin or Engineer access required.', 'error')
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
@@ -1150,14 +1166,14 @@ def login():
             clear_failures(rate_key)
             if CENTRAL_MODE:
                 try:
-                    list_accessible_sites(db, user) if is_hq_admin(user) else resolve_site_context(db, user)
+                    list_accessible_sites(db, user) if is_portal_admin(user) else resolve_site_context(db, user)
                 except CentralAccessError:
                     flash('Your account does not have a valid organization/site assignment. Contact an administrator.', 'error')
                     return redirect(url_for('login'))
             login_user(user, remember=True)
             flask_session.permanent = True
             flask_session.pop('active_site_id', None)
-            if CENTRAL_MODE and is_hq_admin(user):
+            if CENTRAL_MODE and is_portal_admin(user):
                 return redirect(url_for('hq_dashboard'))
             flash('Logged in successfully.', 'success')
             return redirect(url_for('dashboard'))
@@ -1165,18 +1181,55 @@ def login():
             db.close()
     return render_template('login.html')
 
+INDIA_STATES = (
+    'Andhra Pradesh',
+    'Arunachal Pradesh',
+    'Assam',
+    'Bihar',
+    'Chhattisgarh',
+    'Delhi',
+    'Goa',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jammu & Kashmir',
+    'Jharkhand',
+    'Karnataka',
+    'Kerala',
+    'Ladakh',
+    'Madhya Pradesh',
+    'Maharashtra',
+    'Manipur',
+    'Meghalaya',
+    'Mizoram',
+    'Nagaland',
+    'Odisha',
+    'Puducherry',
+    'Punjab',
+    'Rajasthan',
+    'Sikkim',
+    'Tamil Nadu',
+    'Telangana',
+    'Tripura',
+    'Uttar Pradesh',
+    'Uttarakhand',
+    'West Bengal',
+)
+
+
 @app.route('/hq')
 @login_required
 def hq_dashboard():
-    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
     db = Session()
     try:
-        from models import Site
         active_sites = list_accessible_sites(db, current_user)
         org_id = getattr(current_user, 'organization_id', None)
         inactive_q = db.query(Site).filter(Site.is_active == False)
         if org_id:
             inactive_q = inactive_q.filter(Site.organization_id == org_id)
+        if is_state_admin(current_user):
+            inactive_q = inactive_q.filter(Site.state == (current_user.assigned_state or '').strip())
         inactive_sites = inactive_q.order_by(Site.site_name).all()
         site_ids = [s.site_id for s in active_sites]
         plant_counts = {}
@@ -1217,6 +1270,9 @@ def hq_dashboard():
                 sites=active_sites,
                 inactive_sites=inactive_sites,
                 site_metrics=site_metrics,
+                states=INDIA_STATES,
+                is_state_user=is_state_admin(current_user),
+                assigned_state=getattr(current_user, 'assigned_state', None),
             )
         )
         resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
@@ -1230,15 +1286,16 @@ def hq_dashboard():
 @app.route('/hq/sites/add', methods=['POST'])
 @login_required
 def hq_add_site():
-    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
     site_id = (request.form.get('site_id') or '').strip().upper()
     site_name = (request.form.get('site_name') or '').strip()
+    state = (current_user.assigned_state or '').strip() if is_state_admin(current_user) else (request.form.get('state') or '').strip()
     admin_username = (request.form.get('admin_username') or '').strip()
     admin_full_name = (request.form.get('admin_full_name') or '').strip()
     admin_password = request.form.get('admin_password') or ''
 
-    if not is_valid_site_id(site_id) or not site_name:
-        flash('Valid Site ID (letters/numbers/underscore/hyphen) and Site Name are required.', 'error')
+    if not is_valid_site_id(site_id) or not site_name or not state:
+        flash('Valid Site ID (letters/numbers/underscore/hyphen), Site Name, and State are required.', 'error')
         return redirect(url_for('hq_dashboard'))
     if admin_username and (not admin_full_name or len(admin_password) < 6):
         flash('When creating a site admin, full name and a password of at least 6 characters are required.', 'error')
@@ -1246,7 +1303,6 @@ def hq_add_site():
 
     db = Session()
     try:
-        from models import Site, Organization
         org_id = getattr(current_user, 'organization_id', None)
         if not org_id:
             first_org = db.query(Organization).filter_by(is_active=True).order_by(Organization.created_at).first()
@@ -1255,8 +1311,11 @@ def hq_add_site():
         if existing:
             flash(f'Site ID "{site_id}" already exists.', 'error')
             return redirect(url_for('hq_dashboard'))
-        new_site = Site(site_id=site_id, site_name=site_name, organization_id=org_id, is_active=True)
+        new_site = Site(site_id=site_id, site_name=site_name, state=state, organization_id=org_id, is_active=True)
         db.add(new_site)
+        # Auto-create matching plant since site and plant represent the same facility.
+        if not db.query(Plant).filter_by(site_id=site_id).first():
+            db.add(Plant(site_id=site_id, name=site_name, location=state))
         if admin_username:
             if db.query(User).filter_by(username=admin_username).first():
                 db.rollback()
@@ -1272,7 +1331,7 @@ def hq_add_site():
                 organization_id=org_id,
             ))
         db.commit()
-        flash(f'Site "{site_name}" ({site_id}) added.', 'success')
+        flash(f'Site "{site_name}" ({site_id}) and matching plant added.', 'success')
         return redirect(url_for('hq_dashboard'))
     except Exception:
         db.rollback()
@@ -1286,17 +1345,18 @@ def hq_add_site():
 @app.route('/hq/sites/<site_id>/deactivate', methods=['POST'])
 @login_required
 def hq_deactivate_site(site_id):
-    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
     db = Session()
     try:
-        from models import Site
         org_id = getattr(current_user, 'organization_id', None)
         q = db.query(Site).filter_by(site_id=site_id)
         if org_id:
             q = q.filter(Site.organization_id == org_id)
+        if is_state_admin(current_user):
+            q = q.filter(Site.state == (current_user.assigned_state or '').strip())
         site = q.first()
         if not site:
-            flash('Site not found in your organization.', 'error')
+            flash('Site not found in your scope.', 'error')
             return redirect(url_for('hq_dashboard'))
         site.is_active = False
         if flask_session.get('active_site_id') == site.site_id:
@@ -1311,17 +1371,18 @@ def hq_deactivate_site(site_id):
 @app.route('/hq/sites/<site_id>/reactivate', methods=['POST'])
 @login_required
 def hq_reactivate_site(site_id):
-    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
     db = Session()
     try:
-        from models import Site
         org_id = getattr(current_user, 'organization_id', None)
         q = db.query(Site).filter_by(site_id=site_id)
         if org_id:
             q = q.filter(Site.organization_id == org_id)
+        if is_state_admin(current_user):
+            q = q.filter(Site.state == (current_user.assigned_state or '').strip())
         site = q.first()
         if not site:
-            flash('Site not found in your organization.', 'error')
+            flash('Site not found in your scope.', 'error')
             return redirect(url_for('hq_dashboard'))
         site.is_active = True
         db.commit()
@@ -1334,7 +1395,7 @@ def hq_reactivate_site(site_id):
 @app.route('/switch-site/<site_id>', methods=['POST'])
 @login_required
 def switch_site(site_id):
-    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    if not CENTRAL_MODE: abort(403)
     db = Session()
     try:
         context = resolve_site_context(db, current_user, site_id)
@@ -1350,9 +1411,304 @@ def switch_site(site_id):
 @app.route('/hq/return')
 @login_required
 def hq_return():
-    if not CENTRAL_MODE or not is_hq_admin(current_user): abort(403)
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
     flask_session.pop('active_site_id', None)
     return redirect(url_for('hq_dashboard'))
+
+
+def _portal_org_id(db, user):
+    org_id = getattr(user, 'organization_id', None)
+    if not org_id:
+        first_org = db.query(Organization).filter_by(is_active=True).order_by(Organization.created_at).first()
+        org_id = first_org.id if first_org else None
+    return org_id
+
+
+def _portal_manageable_users(db, actor, scoped_sites):
+    org_id = _portal_org_id(db, actor)
+    scoped_site_ids = {s.site_id for s in scoped_sites}
+    q = db.query(User)
+    if org_id:
+        q = q.filter(or_(User.organization_id == org_id, User.site_id.in_(scoped_site_ids) if scoped_site_ids else False))
+    all_users = q.order_by(User.created_at.desc()).all()
+    access_rows = db.query(UserSiteAccess).filter_by(is_active=True).all()
+    extra_by_user = {}
+    for r in access_rows:
+        extra_by_user.setdefault(str(r.user_id), []).append(r.site_id)
+
+    if is_hq_admin(actor):
+        return all_users, extra_by_user
+
+    # State admin sees only non-HQ/non-state-admin users linked to sites in their assigned state.
+    filtered = []
+    for u in all_users:
+        if is_portal_admin(u):
+            continue
+        user_sites = set(extra_by_user.get(str(u.id), []))
+        if u.site_id:
+            user_sites.add(u.site_id)
+        if user_sites & scoped_site_ids:
+            filtered.append(u)
+    return filtered, extra_by_user
+
+
+@app.route('/hq/users')
+@login_required
+def hq_users():
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
+    db = Session()
+    try:
+        scoped_sites = list_accessible_sites(db, current_user)
+        site_by_id = {s.site_id: s for s in scoped_sites}
+        users_raw, extra_by_user = _portal_manageable_users(db, current_user, scoped_sites)
+        user_rows = []
+        for u in users_raw:
+            extra_ids = [sid for sid in extra_by_user.get(str(u.id), []) if sid != u.site_id]
+            all_ids = ([u.site_id] if u.site_id else []) + extra_ids
+            state_label = u.assigned_state if is_state_admin(u) else (
+                site_by_id[u.site_id].state if u.site_id in site_by_id and site_by_id[u.site_id].state else ''
+            )
+            user_rows.append({
+                'user': u,
+                'role': canonical_role(u.role),
+                'extra_site_ids': extra_ids,
+                'all_site_ids': all_ids,
+                'state_label': state_label,
+            })
+        return render_template(
+            'hq_users.html',
+            user_rows=user_rows,
+            sites=scoped_sites,
+            site_by_id=site_by_id,
+            states=INDIA_STATES,
+            is_state_user=is_state_admin(current_user),
+            assigned_state=getattr(current_user, 'assigned_state', None),
+        )
+    except CentralAccessError:
+        abort(403)
+    finally:
+        db.close()
+
+
+@app.route('/hq/users/add', methods=['POST'])
+@login_required
+def hq_users_add():
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
+    username = (request.form.get('username') or '').strip()
+    full_name = (request.form.get('full_name') or '').strip()
+    password = request.form.get('password') or ''
+    role = canonical_role(request.form.get('role') or 'user')
+    assigned_state = (request.form.get('assigned_state') or '').strip()
+    primary_site_id = (request.form.get('site_id') or '').strip()
+    extra_site_ids = [s.strip() for s in request.form.getlist('extra_site_ids') if s.strip()]
+
+    allowed_roles = set(creatable_roles_for(current_user))
+    if role not in allowed_roles:
+        flash('You do not have permission to create a user with that role.', 'error')
+        return redirect(url_for('hq_users'))
+    if not username or not full_name or len(password) < 6:
+        flash('Username, full name, and password (min 6 chars) are required.', 'error')
+        return redirect(url_for('hq_users'))
+
+    db = Session()
+    try:
+        if db.query(User).filter_by(username=username).first():
+            flash(f'Username "{username}" already exists.', 'error')
+            return redirect(url_for('hq_users'))
+
+        scoped_sites = list_accessible_sites(db, current_user)
+        valid_site_ids = {s.site_id for s in scoped_sites}
+        org_id = _portal_org_id(db, current_user)
+
+        if role == 'hq_admin':
+            new_user = User(
+                username=username,
+                full_name=full_name,
+                password_hash=generate_password_hash(password),
+                role='hq_admin',
+                is_active=True,
+                site_id=None,
+                organization_id=org_id,
+                assigned_state=None,
+            )
+            db.add(new_user)
+            db.commit()
+            flash(f'HQ Admin "{username}" created.', 'success')
+            return redirect(url_for('hq_users'))
+
+        if role == 'state_admin':
+            if not assigned_state:
+                flash('Assigned state is required for State Admin.', 'error')
+                return redirect(url_for('hq_users'))
+            new_user = User(
+                username=username,
+                full_name=full_name,
+                password_hash=generate_password_hash(password),
+                role='state_admin',
+                is_active=True,
+                site_id=None,
+                organization_id=org_id,
+                assigned_state=assigned_state,
+            )
+            db.add(new_user)
+            db.commit()
+            flash(f'State Admin "{username}" ({assigned_state}) created.', 'success')
+            return redirect(url_for('hq_users'))
+
+        if not primary_site_id or primary_site_id not in valid_site_ids:
+            flash('Please select a valid primary site in your scope.', 'error')
+            return redirect(url_for('hq_users'))
+
+        new_user = User(
+            username=username,
+            full_name=full_name,
+            password_hash=generate_password_hash(password),
+            role=role,
+            is_active=True,
+            site_id=primary_site_id,
+            organization_id=org_id,
+            assigned_state=None,
+        )
+        db.add(new_user)
+        db.flush()
+        for sid in extra_site_ids:
+            if sid in valid_site_ids and sid != primary_site_id:
+                db.add(UserSiteAccess(
+                    user_id=str(new_user.id),
+                    site_id=sid,
+                    is_active=True,
+                    granted_by=str(current_user.id),
+                ))
+        db.commit()
+        flash(f'User "{username}" ({role}) created.', 'success')
+        return redirect(url_for('hq_users'))
+    finally:
+        db.close()
+
+
+@app.route('/hq/users/<user_id>/update', methods=['POST'])
+@login_required
+def hq_users_update(user_id):
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
+    db = Session()
+    try:
+        scoped_sites = list_accessible_sites(db, current_user)
+        valid_site_ids = {s.site_id for s in scoped_sites}
+        manageable, _ = _portal_manageable_users(db, current_user, scoped_sites)
+        target = next((u for u in manageable if str(u.id) == str(user_id)), None)
+        if not target or not can_manage_target_user(current_user, target):
+            abort(403)
+
+        role = canonical_role(request.form.get('role') or target.role)
+        allowed_roles = set(creatable_roles_for(current_user))
+        if role not in allowed_roles:
+            flash('You do not have permission to assign that role.', 'error')
+            return redirect(url_for('hq_users'))
+
+        target.role = role
+        if role == 'state_admin':
+            st = (request.form.get('assigned_state') or target.assigned_state or '').strip()
+            if not st:
+                flash('Assigned state is required for State Admin.', 'error')
+                return redirect(url_for('hq_users'))
+            target.assigned_state = st
+            target.site_id = None
+            db.query(UserSiteAccess).filter_by(user_id=str(target.id)).delete()
+        elif role == 'hq_admin':
+            target.site_id = None
+            target.assigned_state = None
+        else:
+            primary_site_id = (request.form.get('site_id') or '').strip()
+            if primary_site_id not in valid_site_ids:
+                flash('Select a valid primary site.', 'error')
+                return redirect(url_for('hq_users'))
+            target.site_id = primary_site_id
+            target.assigned_state = None
+            extra_site_ids = [s.strip() for s in request.form.getlist('extra_site_ids') if s.strip() in valid_site_ids and s.strip() != primary_site_id]
+            db.query(UserSiteAccess).filter_by(user_id=str(target.id)).delete()
+            for sid in extra_site_ids:
+                db.add(UserSiteAccess(
+                    user_id=str(target.id),
+                    site_id=sid,
+                    is_active=True,
+                    granted_by=str(current_user.id),
+                ))
+        db.commit()
+        flash(f'Updated "{target.username}".', 'success')
+        return redirect(url_for('hq_users'))
+    finally:
+        db.close()
+
+
+@app.route('/hq/users/<user_id>/reset-password', methods=['POST'])
+@login_required
+def hq_users_reset_password(user_id):
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
+    new_pw = request.form.get('password') or ''
+    if len(new_pw) < 6:
+        flash('Password must be at least 6 characters.', 'error')
+        return redirect(url_for('hq_users'))
+    db = Session()
+    try:
+        scoped_sites = list_accessible_sites(db, current_user)
+        manageable, _ = _portal_manageable_users(db, current_user, scoped_sites)
+        target = next((u for u in manageable if str(u.id) == str(user_id)), None)
+        if not target or not can_manage_target_user(current_user, target):
+            abort(403)
+        target.password_hash = generate_password_hash(new_pw)
+        db.commit()
+        flash(f'Password reset for "{target.username}".', 'success')
+        return redirect(url_for('hq_users'))
+    finally:
+        db.close()
+
+
+@app.route('/hq/users/<user_id>/toggle', methods=['POST'])
+@login_required
+def hq_users_toggle(user_id):
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
+    if str(user_id) == str(current_user.id):
+        flash('You cannot deactivate your own account.', 'error')
+        return redirect(url_for('hq_users'))
+    db = Session()
+    try:
+        scoped_sites = list_accessible_sites(db, current_user)
+        manageable, _ = _portal_manageable_users(db, current_user, scoped_sites)
+        target = next((u for u in manageable if str(u.id) == str(user_id)), None)
+        if not target or not can_manage_target_user(current_user, target):
+            abort(403)
+        target.is_active = not bool(target.is_active)
+        db.commit()
+        state_lbl = 'activated' if target.is_active else 'deactivated'
+        flash(f'User "{target.username}" {state_lbl}.', 'success')
+        return redirect(url_for('hq_users'))
+    finally:
+        db.close()
+
+
+@app.route('/hq/users/<user_id>/delete', methods=['POST'])
+@login_required
+def hq_users_delete(user_id):
+    if not CENTRAL_MODE or not is_portal_admin(current_user): abort(403)
+    if str(user_id) == str(current_user.id):
+        flash('You cannot delete your own account.', 'error')
+        return redirect(url_for('hq_users'))
+    db = Session()
+    try:
+        scoped_sites = list_accessible_sites(db, current_user)
+        manageable, _ = _portal_manageable_users(db, current_user, scoped_sites)
+        target = next((u for u in manageable if str(u.id) == str(user_id)), None)
+        if not target or not can_manage_target_user(current_user, target):
+            abort(403)
+        username = target.username
+        db.query(UserPlantAssignment).filter_by(user_id=str(target.id)).delete()
+        db.query(UserSiteAccess).filter_by(user_id=str(target.id)).delete()
+        db.delete(target)
+        db.commit()
+        flash(f'User "{username}" deleted.', 'success')
+        return redirect(url_for('hq_users'))
+    finally:
+        db.close()
 
 
 @app.route('/logout')
@@ -1390,13 +1746,14 @@ def users():
 @admin_required
 def users_new():
     site = current_site()
+    allowed_roles = [r for r in creatable_roles_for(current_user) if r in ('site_admin', 'engineer', 'user')]
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         full_name = request.form.get('full_name', '').strip()
         password = request.form.get('password', '')
         role = canonical_role(request.form.get('role', 'user'))
-        if role not in ('site_admin', 'engineer', 'user'):
-            flash('Choose Site Admin, Engineer, or User.', 'error')
+        if role not in allowed_roles:
+            flash('You do not have permission to create a user with that role.', 'error')
             return redirect(url_for('users_new'))
         plant_ids = request.form.getlist('plant_ids')
 
@@ -1448,7 +1805,7 @@ def users_new():
     session = Session()
     try:
         plants = session.query(Plant).filter_by(site_id=site.site_id).order_by(Plant.name).all()
-        return render_template('users_new.html', plants=plants)
+        return render_template('users_new.html', plants=plants, creatable_roles=allowed_roles)
     finally:
         session.close()
 
@@ -1458,18 +1815,25 @@ def users_new():
 @admin_required
 def users_edit(user_id):
     site = current_site()
+    allowed_roles = [r for r in creatable_roles_for(current_user) if r in ('site_admin', 'engineer', 'user')]
     session = Session()
     try:
         user = get_user_or_404(session, user_id, site.site_id)
         if not user:
             flash('User not found.', 'error')
             return redirect(url_for('users'))
+        if not can_manage_target_user(current_user, user):
+            flash('You do not have permission to delete this user.', 'error')
+            return redirect(url_for('users'))
+        if not can_manage_target_user(current_user, user):
+            flash('You do not have permission to edit or reset the password of this user.', 'error')
+            return redirect(url_for('users'))
         
         if request.method == 'POST':
             full_name = request.form.get('full_name', '').strip()
             role = canonical_role(request.form.get('role', user.role))
-            if role not in ('site_admin', 'engineer', 'user'):
-                flash('Invalid site role. HQ Admin accounts are managed centrally.', 'error')
+            if role not in allowed_roles:
+                flash('You do not have permission to assign that role.', 'error')
                 return redirect(url_for('users_edit', user_id=user_id))
             is_active = request.form.get('is_active', 'off') == 'on'
             password = request.form.get('password', '')
@@ -1509,7 +1873,7 @@ def users_edit(user_id):
         
         plants = session.query(Plant).filter_by(site_id=site.site_id).order_by(Plant.name).all()
         assigned_ids = {r[0] for r in session.query(UserPlantAssignment.plant_id).filter_by(user_id=user.id).all()}
-        return render_template('users_edit.html', user=user, plants=plants, assigned_ids=assigned_ids)
+        return render_template('users_edit.html', user=user, plants=plants, assigned_ids=assigned_ids, creatable_roles=allowed_roles)
     finally:
         session.close()
 
@@ -1529,6 +1893,9 @@ def users_delete(user_id):
         user = get_user_or_404(session, user_id, site.site_id)
         if not user:
             flash('User not found.', 'error')
+            return redirect(url_for('users'))
+        if not can_manage_target_user(current_user, user):
+            flash('You do not have permission to delete this user.', 'error')
             return redirect(url_for('users'))
         
         username = user.username
@@ -1598,7 +1965,8 @@ def dashboard():
         latest_audit_number = latest_audit.audit_number if latest_audit else '—'
         total_responses = _plant_ok(session.query(func.count(AuditResponse.id)).join(
             Audit, AuditResponse.audit_id == Audit.id).filter(
-            Audit.site_id == site.site_id, Audit.is_deleted == False), Audit.plant_id).scalar() or 0
+            Audit.site_id == site.site_id, Audit.is_deleted == False,
+            func.lower(AuditResponse.response_status).in_(['pass', 'fail', 'ofi'])), Audit.plant_id).scalar() or 0
         pass_count = _plant_ok(session.query(func.count(AuditResponse.id)).join(
             Audit, AuditResponse.audit_id == Audit.id).filter(
             Audit.site_id == site.site_id, Audit.is_deleted == False,
@@ -1929,14 +2297,14 @@ def plants_post():
 
 PLANT_SPEC_INT_FIELDS = [
     'no_of_blocks', 'central_inverter_count', 'string_inverter_count', 'scb_count',
-    'mms_count', 'transformer_count', 'clamps_connectors_count', 'lt_panel_count',
-    'ht_panel_count', 'acdb_count', 'ups_db_battery_count', 'lightning_protection_count',
+    'mms_count', 'transformer_count', 'lt_panel_count',
+    'ht_panel_count', 'acdb_count', 'ups_db_battery_count',
 ]
 PLANT_SPEC_FLOAT_FIELDS = ['dc_capacity', 'ac_capacity']
 PLANT_SPEC_TEXT_FIELDS = [
     'building_name', 'roof_type', 'city', 'state',
     'central_inverter_type', 'string_inverter_type', 'mms_type', 'transformer_type',
-    'lt_panel_type', 'ht_panel_type', 'dc_earthing', 'ac_earthing',
+    'lt_panel_type', 'ht_panel_type', 'ups_type',
 ]
 
 
@@ -2254,16 +2622,13 @@ def audit_new_post():
             mms_count=plant.mms_count,
             transformer_type=plant.transformer_type,
             transformer_count=plant.transformer_count,
-            clamps_connectors_count=plant.clamps_connectors_count,
             lt_panel_type=plant.lt_panel_type,
             lt_panel_count=plant.lt_panel_count,
             ht_panel_type=plant.ht_panel_type,
             ht_panel_count=plant.ht_panel_count,
             acdb_count=plant.acdb_count,
+            ups_type=plant.ups_type,
             ups_db_battery_count=plant.ups_db_battery_count,
-            lightning_protection_count=plant.lightning_protection_count,
-            dc_earthing=plant.dc_earthing,
-            ac_earthing=plant.ac_earthing,
         )
         session.add(site_detail)
         session.commit()
@@ -2311,16 +2676,13 @@ def audit_site_post(audit_id):
             'mms_count': safe_int(request.form.get('mms_count')),
             'transformer_type': request.form.get('transformer_type', ''),
             'transformer_count': safe_int(request.form.get('transformer_count')),
-            'clamps_connectors_count': safe_int(request.form.get('clamps_connectors_count')),
             'lt_panel_type': request.form.get('lt_panel_type', ''),
             'lt_panel_count': safe_int(request.form.get('lt_panel_count')),
             'ht_panel_type': request.form.get('ht_panel_type', ''),
             'ht_panel_count': safe_int(request.form.get('ht_panel_count')),
             'acdb_count': safe_int(request.form.get('acdb_count')),
+            'ups_type': request.form.get('ups_type', ''),
             'ups_db_battery_count': safe_int(request.form.get('ups_db_battery_count')),
-            'lightning_protection_count': safe_int(request.form.get('lightning_protection_count')),
-            'dc_earthing': request.form.get('dc_earthing', ''),
-            'ac_earthing': request.form.get('ac_earthing', ''),
         }
 
         site_detail = session.query(AuditSiteDetail).filter_by(audit_id=audit.id).first()

@@ -1,13 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}HQ Administration{% endblock %}
+{% block title %}{{ 'State Administration' if is_state_user else 'HQ Administration' }}{% endblock %}
 {% block content %}
 <div class="container" style="max-width: 1100px; margin: 2rem auto; padding: 0 1rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
     <div>
-      <h1 style="margin:0;">HQ Administration</h1>
-      <p style="margin:.4rem 0 0; color:var(--muted, #64748b);">Manage sites in your organization and open any site to administer its audits, users, plants, and reports.</p>
+      <h1 style="margin:0;">{{ 'State Administration — ' ~ assigned_state if is_state_user else 'HQ Administration' }}</h1>
+      <p style="margin:.4rem 0 0; color:var(--muted, #64748b);">{{ 'Manage sites and users in ' ~ assigned_state ~ '.' if is_state_user else 'Manage sites in your organization and open any site to administer its audits, users, plants, and reports.' }}</p>
     </div>
-    <a class="btn btn-secondary" href="{{ url_for('logout') }}">Log out</a>
+    <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+      <a class="btn btn-primary" href="{{ url_for('hq_users') }}">Manage Users</a>
+      <a class="btn btn-secondary" href="{{ url_for('logout') }}">Log out</a>
+    </div>
   </div>
 
   <div class="card" style="padding:1.25rem; margin-bottom:1.5rem;">
@@ -16,19 +19,32 @@
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.85rem; margin-bottom:1rem;">
         <div>
           <label for="hq_site_id" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site ID *</label>
-          <input id="hq_site_id" name="site_id" type="text" placeholder="e.g. GJ001" required style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+          <input id="hq_site_id" name="site_id" type="text" placeholder="e.g. Amravati01" required style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
         </div>
         <div>
           <label for="hq_site_name" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site Name *</label>
-          <input id="hq_site_name" name="site_name" type="text" placeholder="e.g. Gujarat Solar Park" required style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+          <input id="hq_site_name" name="site_name" type="text" placeholder="e.g. Amravati 01" required style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+        <div>
+          <label for="hq_site_state" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">State *</label>
+          {% if is_state_user %}
+            <input id="hq_site_state" name="state" type="text" value="{{ assigned_state }}" readonly style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface-alt,#f1f5f9);">
+          {% else %}
+            <select id="hq_site_state" name="state" required style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface,#fff);">
+              <option value="">Select state...</option>
+              {% for st in states %}
+                <option value="{{ st }}">{{ st }}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
         </div>
         <div>
           <label for="hq_admin_user" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site Admin Username (optional)</label>
-          <input id="hq_admin_user" name="admin_username" type="text" placeholder="e.g. gj_admin" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+          <input id="hq_admin_user" name="admin_username" type="text" placeholder="e.g. amt_admin" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
         </div>
         <div>
           <label for="hq_admin_name" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site Admin Full Name</label>
-          <input id="hq_admin_name" name="admin_full_name" type="text" placeholder="e.g. Gujarat Admin" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+          <input id="hq_admin_name" name="admin_full_name" type="text" placeholder="e.g. Amravati Admin" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
         </div>
         <div>
           <label for="hq_admin_pass" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Site Admin Password</label>
@@ -41,12 +57,27 @@
 
   {% if sites %}
     <div class="card" style="padding:1.25rem; margin-bottom:1.5rem;">
-      <h2 style="margin-top:0;">Active sites ({{ sites|length }})</h2>
-      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:1rem;">
+        <h2 style="margin:0;">Active sites (<span id="hq_visible_count">{{ sites|length }}</span>)</h2>
+        <div style="display:flex; gap:.65rem; flex-wrap:wrap; align-items:center;">
+          <input id="hq_site_search" type="search" placeholder="Search site name or ID..." aria-label="Search active sites" style="min-width:220px; padding:.48rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+          <select id="hq_state_filter" aria-label="Filter by state" style="min-width:180px; padding:.48rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface,#fff);">
+            <option value="">All states</option>
+            {% for st in states %}
+              <option value="{{ st|lower }}">{{ st }}</option>
+            {% endfor %}
+            <option value="__unassigned__">Unassigned</option>
+          </select>
+        </div>
+      </div>
+      <div id="hq_sites_grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem;">
         {% for site in sites %}
           {% set m = site_metrics.get(site.site_id, {'plants': 0, 'audits': 0, 'open_obs': 0}) if site_metrics is defined else {'plants': 0, 'audits': 0, 'open_obs': 0} %}
-          <div style="border:1px solid var(--border, #dbe2ea); border-radius:12px; padding:1rem;">
-            <h3 style="margin:.1rem 0 .4rem;">{{ site.site_name }}</h3>
+          <div class="hq-site-card" data-name="{{ site.site_name|lower }}" data-id="{{ site.site_id|lower }}" data-state="{{ (site.state or '__unassigned__')|lower }}" style="border:1px solid var(--border, #dbe2ea); border-radius:12px; padding:1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem;">
+              <h3 style="margin:.1rem 0 .35rem;">{{ site.site_name }}</h3>
+              <span style="font-size:.75rem; font-weight:600; padding:.18rem .5rem; border-radius:999px; background:var(--surface-alt,#f1f5f9); color:var(--muted,#475569); white-space:nowrap;">{{ site.state or 'Unassigned' }}</span>
+            </div>
             <p style="margin:0 0 .6rem; color:var(--muted, #64748b);">Site ID: {{ site.site_id }}</p>
             <div style="display:flex; gap:.75rem; flex-wrap:wrap; font-size:.82rem; color:var(--muted, #475569); margin-bottom:1rem;">
               <span><b>{{ m.plants }}</b> plant(s)</span>
@@ -64,6 +95,7 @@
           </div>
         {% endfor %}
       </div>
+      <p id="hq_no_matches" style="display:none; margin:1rem 0 0; color:var(--muted, #64748b);">No active sites match your search or state filter.</p>
     </div>
   {% else %}
     <div class="card" style="padding:1.25rem; margin-bottom:1.5rem;">No active sites are assigned to your organization yet. Use "Add new site" above to create one.</div>
@@ -75,7 +107,10 @@
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem;">
         {% for site in inactive_sites %}
           <div style="border:1px dashed var(--border, #cbd5e1); border-radius:12px; padding:1rem; opacity:.85;">
-            <h3 style="margin:.1rem 0 .4rem;">{{ site.site_name }}</h3>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem;">
+              <h3 style="margin:.1rem 0 .4rem;">{{ site.site_name }}</h3>
+              <span style="font-size:.75rem; font-weight:600; padding:.18rem .5rem; border-radius:999px; background:var(--surface-alt,#f1f5f9); color:var(--muted,#475569); white-space:nowrap;">{{ site.state or 'Unassigned' }}</span>
+            </div>
             <p style="margin:0 0 1rem; color:var(--muted, #64748b);">Site ID: {{ site.site_id }} (Deactivated)</p>
             <form method="post" action="{{ url_for('hq_reactivate_site', site_id=site.site_id) }}" onsubmit="return confirm('Restore site {{ site.site_name }} ({{ site.site_id }})?');">
               <button class="btn btn-secondary" type="submit">Restore site</button>
@@ -86,4 +121,35 @@
     </div>
   {% endif %}
 </div>
+<script>
+(function () {
+  var searchEl = document.getElementById('hq_site_search');
+  var stateEl = document.getElementById('hq_state_filter');
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.hq-site-card'));
+  var countEl = document.getElementById('hq_visible_count');
+  var emptyEl = document.getElementById('hq_no_matches');
+  if (!searchEl || !stateEl || !cards.length) return;
+
+  function applyFilter() {
+    var q = (searchEl.value || '').trim().toLowerCase();
+    var st = (stateEl.value || '').trim().toLowerCase();
+    var visible = 0;
+    cards.forEach(function (card) {
+      var name = card.getAttribute('data-name') || '';
+      var id = card.getAttribute('data-id') || '';
+      var state = card.getAttribute('data-state') || '';
+      var matchQuery = !q || name.indexOf(q) !== -1 || id.indexOf(q) !== -1 || state.indexOf(q) !== -1;
+      var matchState = !st || state === st;
+      var show = matchQuery && matchState;
+      card.style.display = show ? '' : 'none';
+      if (show) visible += 1;
+    });
+    if (countEl) countEl.textContent = String(visible);
+    if (emptyEl) emptyEl.style.display = visible === 0 ? 'block' : 'none';
+  }
+
+  searchEl.addEventListener('input', applyFilter);
+  stateEl.addEventListener('change', applyFilter);
+})();
+</script>
 {% endblock %}

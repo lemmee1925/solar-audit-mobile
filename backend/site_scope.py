@@ -192,9 +192,23 @@ def site_rating_for(score, cfg=None):
     return cfg["rating_bands"][-1]["rating"]
 
 
+OFI_CATEGORY_IMPACTS = {
+    "safety": 1.00,
+    "reliability": 0.75,
+    "profitability": 0.55,
+    "aesthetic": 0.25,
+}
+OFI_SEVERITY_FACTORS = {
+    "minor": 0.30,
+    "major": 0.60,
+    "critical": 1.00,
+}
+
+
 def compute_score(rows, cfg=None):
     """
     rows: iterable of (response_status, severity_or_None, checkpoint_weight_or_None)
+          or 4-tuples including ofi_category_or_None.
     Returns a dict with counts, compliance %, weighted score %, rating and the
     weights used (so the exact basis is stored with the audit).
     """
@@ -202,14 +216,22 @@ def compute_score(rows, cfg=None):
     sw = cfg["severity_weights"]
     default_sev = cfg.get("unclassified_severity", "major")
     complied = not_complied = na = ofi = 0
-    w_ok = w_nc = 0.0
+    w_ok = w_nc = max_points = 0.0
     by_sev = {s: 0 for s in SEVERITIES}
     unclassified = 0
-    for status, severity, q_weight in rows:
+    critical_safety_ofi = False
+    for row in rows:
+        if len(row) >= 4:
+            status, severity, q_weight, ofi_category = row[0], row[1], row[2], row[3]
+        else:
+            status, severity, q_weight = row[0], row[1], row[2]
+            ofi_category = None
         st = (status or "").lower()
+        base_w = float(q_weight) if q_weight else float(cfg["complied_weight"])
         if st == "pass":
             complied += 1
-            w_ok += float(q_weight) if q_weight else float(cfg["complied_weight"])
+            w_ok += base_w
+            max_points += base_w
         elif st == "fail":
             not_complied += 1
             sev = (severity or "").lower()
@@ -217,28 +239,59 @@ def compute_score(rows, cfg=None):
                 unclassified += 1
                 sev = default_sev
             by_sev[sev] = by_sev.get(sev, 0) + 1
-            w_nc += float(sw.get(sev, 1.0))
+            sev_w = float(sw.get(sev, 1.0))
+            w_nc += sev_w
+            max_points += sev_w
         elif st == "ofi":
             ofi += 1
-            na += 1
+            cat = (ofi_category or "reliability").strip().lower()
+            sev = (severity or "").strip().lower()
+            if sev not in OFI_SEVERITY_FACTORS:
+                unclassified += 1
+                sev = default_sev if default_sev in OFI_SEVERITY_FACTORS else "major"
+            by_sev[sev] = by_sev.get(sev, 0) + 1
+            impact = OFI_CATEGORY_IMPACTS.get(cat, 0.75)
+            sev_factor = OFI_SEVERITY_FACTORS.get(sev, 0.60)
+            credit = max(0.0, 1.0 - (impact * sev_factor))
+            w_ok += credit * base_w
+            max_points += base_w
+            if cat == "safety" and sev == "critical":
+                critical_safety_ofi = True
         else:
             na += 1
-    applicable = complied + not_complied
+    applicable = complied + not_complied + ofi
+    total_checked = applicable + na
     compliance = round(complied * 100.0 / applicable, 1) if applicable else 0.0
-    denom = w_ok + w_nc
-    score = round(w_ok * 100.0 / denom, 1) if denom else 0.0
+    score = round(w_ok * 100.0 / max_points, 1) if max_points else 0.0
+    coverage = round(applicable * 100.0 / total_checked, 1) if total_checked else 0.0
+    rating = site_rating_for(score, cfg) if applicable else "Not Rated"
+    if critical_safety_ofi and rating in ("Excellent", "Good"):
+        rating = "Needs Improvement"
     return {
         "complied": complied, "not_complied": not_complied, "not_applicable": na, "ofi": ofi,
         "applicable": applicable, "compliance_pct": compliance, "score_pct": score,
-        "rating": site_rating_for(score, cfg) if applicable else "Not Rated",
+        "coverage_pct": coverage, "critical_safety_ofi": critical_safety_ofi,
+        "earned_points": round(w_ok, 3), "max_points": round(max_points, 3),
+        "rating": rating,
         "not_complied_by_severity": by_sev, "unclassified_not_complied": unclassified,
-        "weights_used": {"severity_weights": sw, "complied_weight": cfg["complied_weight"]},
+        "weights_used": {
+            "severity_weights": sw,
+            "complied_weight": cfg["complied_weight"],
+            "ofi_category_impacts": OFI_CATEGORY_IMPACTS,
+            "ofi_severity_factors": OFI_SEVERITY_FACTORS,
+        },
     }
 
 
 def audit_rows(session, audit_id):
-    """(status, severity, weight) for every response of an audit, including technical, Safety and Civil / Infrastructure checkpoints."""
-    q = (session.query(AuditResponse.response_status, Observation.severity, AuditQuestion.weight)
+    """(status, severity, weight, ofi_category) for every response of an audit."""
+    from sqlalchemy import func
+    q = (session.query(
+            AuditResponse.response_status,
+            Observation.severity,
+            AuditQuestion.weight,
+            func.coalesce(Observation.ofi_category, AuditResponse.ofi_category),
+         )
          .join(AuditQuestion, AuditResponse.question_id == AuditQuestion.id)
          .outerjoin(Observation, Observation.audit_response_id == AuditResponse.id)
          .filter(AuditResponse.audit_id == audit_id))

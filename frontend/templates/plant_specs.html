@@ -16,7 +16,9 @@
 
 <form method="POST" action="{{ url_for('plant_specs_post', plant_id=plant.id) }}">
   <div class="card">
-    <div class="card-header"><h2 class="card-title">Basic Info</h2></div>
+    <div class="card-header">
+      <h2 class="card-title">Basic Info</h2>
+    </div>
     <div class="field-grid cols-2">
       <div class="form-group">
         <label for="name">Plant Name</label>
@@ -46,8 +48,12 @@
         <label for="state">State</label>
         <select id="state" name="state">
           <option value="">Select state</option>
-          {% for state_name in ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'] %}
-          <option value="{{ state_name }}" {% if plant.state == state_name %}selected{% endif %}>{{ state_name }}</option>
+          {% for state_name in ['Andhra Pradesh','Arunachal
+          Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal
+          Pradesh','Jharkhand','Karnataka','Kerala','Madhya
+          Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil
+          Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'] %}
+          <option value="{{ state_name }}" {% if plant.state==state_name %}selected{% endif %}>{{ state_name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -55,7 +61,9 @@
   </div>
 
   <div class="card">
-    <div class="card-header"><h2 class="card-title">Equipment & Capacity</h2></div>
+    <div class="card-header">
+      <h2 class="card-title">Equipment & Capacity</h2>
+    </div>
     <div class="field-grid cols-2">
       <div class="form-group">
         <label for="no_of_blocks">No. of Blocks</label>
@@ -71,19 +79,23 @@
       </div>
       <div class="form-group">
         <label for="central_inverter_type">Central Inverter Type</label>
-        <input type="text" id="central_inverter_type" name="central_inverter_type" value="{{ plant.central_inverter_type or '' }}">
+        <input type="text" id="central_inverter_type" name="central_inverter_type"
+          value="{{ plant.central_inverter_type or '' }}">
       </div>
       <div class="form-group">
         <label for="central_inverter_count">Central Inverter Count</label>
-        <input type="number" id="central_inverter_count" name="central_inverter_count" value="{{ plant.central_inverter_count or '' }}">
+        <input type="number" id="central_inverter_count" name="central_inverter_count"
+          value="{{ plant.central_inverter_count or '' }}">
       </div>
       <div class="form-group">
         <label for="string_inverter_type">String Inverter Type</label>
-        <input type="text" id="string_inverter_type" name="string_inverter_type" value="{{ plant.string_inverter_type or '' }}">
+        <input type="text" id="string_inverter_type" name="string_inverter_type"
+          value="{{ plant.string_inverter_type or '' }}">
       </div>
       <div class="form-group">
         <label for="string_inverter_count">String Inverter Count</label>
-        <input type="number" id="string_inverter_count" name="string_inverter_count" value="{{ plant.string_inverter_count or '' }}">
+        <input type="number" id="string_inverter_count" name="string_inverter_count"
+          value="{{ plant.string_inverter_count or '' }}">
       </div>
       <div class="form-group">
         <label for="scb_count">SCB Count</label>
@@ -103,11 +115,8 @@
       </div>
       <div class="form-group">
         <label for="transformer_count">Transformer Count</label>
-        <input type="number" id="transformer_count" name="transformer_count" value="{{ plant.transformer_count or '' }}">
-      </div>
-      <div class="form-group">
-        <label for="clamps_connectors_count">Clamps/Connectors Count</label>
-        <input type="number" id="clamps_connectors_count" name="clamps_connectors_count" value="{{ plant.clamps_connectors_count or '' }}">
+        <input type="number" id="transformer_count" name="transformer_count"
+          value="{{ plant.transformer_count or '' }}">
       </div>
       <div class="form-group">
         <label for="lt_panel_type">LT Panel Type</label>
@@ -130,20 +139,13 @@
         <input type="number" id="acdb_count" name="acdb_count" value="{{ plant.acdb_count or '' }}">
       </div>
       <div class="form-group">
-        <label for="ups_db_battery_count">UPS DB / Battery Count</label>
-        <input type="number" id="ups_db_battery_count" name="ups_db_battery_count" value="{{ plant.ups_db_battery_count or '' }}">
+        <label for="ups_type">UPS Type</label>
+        <input type="text" id="ups_type" name="ups_type" value="{{ plant.ups_type or '' }}">
       </div>
       <div class="form-group">
-        <label for="lightning_protection_count">Lightning Protection Count</label>
-        <input type="number" id="lightning_protection_count" name="lightning_protection_count" value="{{ plant.lightning_protection_count or '' }}">
-      </div>
-      <div class="form-group">
-        <label for="dc_earthing">DC Earthing</label>
-        <input type="text" id="dc_earthing" name="dc_earthing" value="{{ plant.dc_earthing or '' }}">
-      </div>
-      <div class="form-group">
-        <label for="ac_earthing">AC Earthing</label>
-        <input type="text" id="ac_earthing" name="ac_earthing" value="{{ plant.ac_earthing or '' }}">
+        <label for="ups_db_battery_count">UPS Battery Count</label>
+        <input type="number" id="ups_db_battery_count" name="ups_db_battery_count"
+          value="{{ plant.ups_db_battery_count or '' }}">
       </div>
     </div>
   </div>

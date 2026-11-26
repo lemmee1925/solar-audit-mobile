@@ -89,6 +89,7 @@ class Site(Base):
     id = UUIDColumn(primary_key=True, default=new_uuid)
     site_id = Column(String(20), nullable=False, unique=True, index=True)
     site_name = Column(String(200), nullable=False)
+    state = Column(String(100), nullable=True, index=True)
     organization_id = Column(String(36), ForeignKey('organizations.id'), index=True)
     is_active = Column(Boolean, nullable=False, default=True, server_default='1')
     created_at = Column(DateTime, server_default=func.now())
@@ -118,6 +119,7 @@ class User(Base, UserMixin):
     # the trusted site_config.json at creation time, never from user input.
     site_id = Column(String(20), nullable=True, index=True)
     organization_id = Column(String(36), ForeignKey('organizations.id'), nullable=True, index=True)
+    assigned_state = Column(String(100), nullable=True, index=True)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -189,6 +191,7 @@ class Plant(Base):
     ht_panel_type = Column(String(200))
     ht_panel_count = Column(Integer)
     acdb_count = Column(Integer)
+    ups_type = Column(String(200))
     ups_db_battery_count = Column(Integer)
     lightning_protection_count = Column(Integer)
     dc_earthing = Column(String(200))
@@ -319,6 +322,7 @@ class AuditSiteDetail(Base):
     ht_panel_type = Column(String(200))
     ht_panel_count = Column(Integer)
     acdb_count = Column(Integer)
+    ups_type = Column(String(200))
     ups_db_battery_count = Column(Integer)
     lightning_protection_count = Column(Integer)
     dc_earthing = Column(String(200))
@@ -518,9 +522,11 @@ def _ensure_checklist_versioning_columns():
     })
     _ensure_columns('users', {
         'organization_id': 'VARCHAR(36)',
+        'assigned_state': 'VARCHAR(100)',
     })
     _ensure_columns('sites', {
         'organization_id': 'VARCHAR(36)',
+        'state': 'VARCHAR(100)',
     })
     # Ensure any remaining model columns (such as plant specification fields)
     # are present on older SQLite databases without destructive recreation.

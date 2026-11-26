@@ -29,8 +29,8 @@ from site_scope import (
     reassign_observation, can_access_plant,
 )
 from version import APP_VERSION, EXPORT_SCHEMA_VERSION
-from role_policy import is_admin, canonical_role, is_hq_admin
-from central_access import resolve_site_context, CentralAccessError
+from role_policy import is_admin, canonical_role, is_hq_admin, is_state_admin
+from central_access import resolve_site_context, list_accessible_sites, CentralAccessError
 
 mobile_api = Blueprint('mobile_api_v1', __name__, url_prefix='/api/mobile/v1')
 TOKEN_MAX_AGE_SECONDS = 8 * 60 * 60
@@ -61,7 +61,7 @@ def _call_legacy_handler(name):
     # The bearer token has already been verified and the user is site-scoped.
     # Establish Flask-Login's request-local user, then invoke the underlying
     # existing handler without its cookie-only login_required wrapper.
-    user = g.mobile_db.query(User).filter_by(id=g.mobile_user_id, site_id=g.mobile_site.site_id).first()
+    user = g.mobile_db.query(User).filter_by(id=g.mobile_user_id).first()
     if not user or not user.is_active:
         return _error('User is unavailable or access has been revoked.', 401)
     login_user(user, remember=False, fresh=True)
@@ -196,12 +196,13 @@ def issue_token():
     db = Session()
     try:
         if central_mode:
+            requested_site_id = str(payload.get('site_id') or '').strip() or None
             user = db.query(User).filter_by(username=username).first()
-            if user and (is_hq_admin(user) or not user.site_id):
+            if user and (is_hq_admin(user) or is_state_admin(user)):
                 user = None
             if user:
                 try:
-                    site = resolve_site_context(db, user)
+                    site = resolve_site_context(db, user, requested_site_id)
                 except CentralAccessError:
                     user = None
         else:
@@ -268,7 +269,7 @@ def revoke_token():
 def bootstrap():
     db = g.mobile_db
     site = g.mobile_site
-    user = db.query(User).filter_by(id=g.mobile_user_id, site_id=site.site_id).first()
+    user = db.query(User).filter_by(id=g.mobile_user_id).first()
     allowed_ids = assigned_plant_ids(db, user)
     plant_query = db.query(Plant).filter_by(site_id=site.site_id).order_by(Plant.name)
     if allowed_ids is not None:
@@ -350,7 +351,7 @@ def site_reference_data(site_id):
     if site_id != site.site_id:
         return _error('Site is not available to this user on this installation.', 404)
     db = g.mobile_db
-    user = db.query(User).filter_by(id=g.mobile_user_id, site_id=site.site_id).first()
+    user = db.query(User).filter_by(id=g.mobile_user_id).first()
     allowed_ids = assigned_plant_ids(db, user)
     plant_query = db.query(Plant).filter_by(site_id=site.site_id).order_by(Plant.name)
     if allowed_ids is not None:
@@ -375,21 +376,21 @@ def site_reference_data(site_id):
 # Plant master specifications mirror the existing /plants/<id>/specs web workflow.
 _PLANT_SPEC_INT_FIELDS = [
     'no_of_blocks', 'central_inverter_count', 'string_inverter_count', 'scb_count',
-    'mms_count', 'transformer_count', 'clamps_connectors_count', 'lt_panel_count',
-    'ht_panel_count', 'acdb_count', 'ups_db_battery_count', 'lightning_protection_count',
+    'mms_count', 'transformer_count', 'lt_panel_count',
+    'ht_panel_count', 'acdb_count', 'ups_db_battery_count',
 ]
 _PLANT_SPEC_FLOAT_FIELDS = ['dc_capacity', 'ac_capacity']
 _PLANT_SPEC_TEXT_FIELDS = [
     'building_name', 'roof_type', 'city', 'state', 'central_inverter_type',
     'string_inverter_type', 'mms_type', 'transformer_type', 'lt_panel_type',
-    'ht_panel_type', 'dc_earthing', 'ac_earthing',
+    'ht_panel_type', 'ups_type',
 ]
 
 def _mobile_admin_required():
     return is_admin(getattr(g, 'mobile_user_role', ''))
 
 def _plant_for_mobile(db, plant_id):
-    user = db.query(User).filter_by(id=g.mobile_user_id, site_id=g.mobile_site.site_id).first()
+    user = db.query(User).filter_by(id=g.mobile_user_id).first()
     allowed_ids = assigned_plant_ids(db, user)
     query = db.query(Plant).filter_by(id=str(plant_id), site_id=g.mobile_site.site_id)
     if allowed_ids is not None:
@@ -539,7 +540,7 @@ def audit_status_list():
         Audit.site_id == g.mobile_site.site_id,
         Audit.is_deleted == False,
     )
-    user = db.query(User).filter_by(id=g.mobile_user_id, site_id=g.mobile_site.site_id).first()
+    user = db.query(User).filter_by(id=g.mobile_user_id).first()
     allowed_ids = assigned_plant_ids(db, user)
     if allowed_ids is not None:
         query = query.filter(Audit.plant_id.in_(allowed_ids))
@@ -780,7 +781,7 @@ def _observation_json(db, obs, audit):
 def observation_list():
     db = g.mobile_db
     site_id = g.mobile_site.site_id
-    user = db.query(User).filter_by(id=g.mobile_user_id, site_id=site_id).first()
+    user = db.query(User).filter_by(id=g.mobile_user_id).first()
     allowed_ids = assigned_plant_ids(db, user)
     query = db.query(Observation, Audit).join(
         Audit, Observation.audit_id == Audit.id

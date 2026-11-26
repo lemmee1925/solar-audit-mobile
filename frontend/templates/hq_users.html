@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% block title %}Global User Management{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 1180px; margin: 2rem auto; padding: 0 1rem;">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+    <div>
+      <h1 style="margin:0;">{{ 'State Users — ' ~ assigned_state if is_state_user else 'Global User Management' }}</h1>
+      <p style="margin:.4rem 0 0; color:var(--muted, #64748b);">
+        {{ 'Create and manage site admins, engineers, and users across ' ~ assigned_state ~ '.' if is_state_user else 'Create state admins, site admins, engineers, and users across all states, and grant multi-site access.' }}
+      </p>
+    </div>
+    <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+      <a class="btn btn-secondary" href="{{ url_for('hq_dashboard') }}">Back to Sites</a>
+      <a class="btn btn-secondary" href="{{ url_for('logout') }}">Log out</a>
+    </div>
+  </div>
+
+  <div class="card" style="padding:1.25rem; margin-bottom:1.5rem;">
+    <h2 style="margin-top:0;">Create user</h2>
+    <form method="post" action="{{ url_for('hq_users_add') }}" id="hq_create_user_form">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.85rem; margin-bottom:1rem;">
+        <div>
+          <label for="cu_username" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Username *</label>
+          <input id="cu_username" name="username" type="text" required placeholder="e.g. mh_admin or ravi.k" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+        <div>
+          <label for="cu_fullname" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Full Name *</label>
+          <input id="cu_fullname" name="full_name" type="text" required placeholder="e.g. Maharashtra State Admin" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+        <div>
+          <label for="cu_password" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Password *</label>
+          <input id="cu_password" name="password" type="password" minlength="6" required placeholder="Min 6 characters" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        </div>
+        <div>
+          <label for="cu_role" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Role *</label>
+          <select id="cu_role" name="role" required style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface,#fff);">
+            {% if not is_state_user %}
+              <option value="hq_admin">HQ Admin</option>
+              <option value="state_admin">State Admin</option>
+            {% endif %}
+            <option value="site_admin">Site Admin</option>
+            <option value="engineer" selected>Engineer / Auditor</option>
+            <option value="user">Technician / User</option>
+          </select>
+        </div>
+        <div id="cu_state_wrap" style="display:none;">
+          <label for="cu_state" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Assigned State *</label>
+          <select id="cu_state" name="assigned_state" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface,#fff);">
+            <option value="">Select state...</option>
+            {% for st in states %}
+              <option value="{{ st }}">{{ st }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="cu_site_wrap">
+          <label for="cu_site" style="display:block; font-size:.85rem; font-weight:600; margin-bottom:.25rem;">Primary Site *</label>
+          <select id="cu_site" name="site_id" style="width:100%; padding:.55rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface,#fff);">
+            <option value="">Select primary site...</option>
+            {% for s in sites %}
+              <option value="{{ s.site_id }}">{{ s.site_name }} ({{ s.site_id }}{% if s.state %} · {{ s.state }}{% endif %})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div id="cu_extra_sites_wrap" style="margin-bottom:1rem;">
+        <div style="font-size:.85rem; font-weight:600; margin-bottom:.35rem;">Additional Sites (Multi-site access, optional)</div>
+        <div style="display:flex; flex-wrap:wrap; gap:.5rem .9rem; max-height:130px; overflow:auto; padding:.6rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface-alt,#f8fafc);">
+          {% for s in sites %}
+            <label style="display:inline-flex; align-items:center; gap:.35rem; font-size:.84rem;">
+              <input type="checkbox" name="extra_site_ids" value="{{ s.site_id }}">
+              <span>{{ s.site_name }} ({{ s.site_id }})</span>
+            </label>
+          {% endfor %}
+          {% if not sites %}
+            <span style="color:var(--muted,#64748b); font-size:.84rem;">No active sites available yet.</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <button class="btn btn-primary" type="submit">Create user</button>
+    </form>
+  </div>
+
+  <div class="card" style="padding:1.25rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:1rem;">
+      <h2 style="margin:0;">Users (<span id="hq_user_visible_count">{{ user_rows|length }}</span>)</h2>
+      <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+        <input id="hq_user_search" type="search" placeholder="Search username or name..." style="min-width:200px; padding:.48rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px;">
+        <select id="hq_user_role_filter" style="padding:.48rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface,#fff);">
+          <option value="">All roles</option>
+          <option value="hq_admin">HQ Admin</option>
+          <option value="state_admin">State Admin</option>
+          <option value="site_admin">Site Admin</option>
+          <option value="engineer">Engineer</option>
+          <option value="user">User</option>
+        </select>
+        {% if not is_state_user %}
+          <select id="hq_user_state_filter" style="padding:.48rem .7rem; border:1px solid var(--border,#cbd5e1); border-radius:8px; background:var(--surface,#fff);">
+            <option value="">All states</option>
+            {% for st in states %}
+              <option value="{{ st|lower }}">{{ st }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:.85rem;" id="hq_user_list">
+      {% for row in user_rows %}
+        {% set u = row.user %}
+        <div class="hq-user-card"
+             data-search="{{ (u.username ~ ' ' ~ u.full_name ~ ' ' ~ (row.all_site_ids|join(' ')))|lower }}"
+             data-role="{{ row.role }}"
+             data-state="{{ (row.state_label or '')|lower }}"
+             style="border:1px solid var(--border,#dbe2ea); border-radius:12px; padding:1rem; {% if not u.is_active %}opacity:.72;{% endif %}">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:.75rem; flex-wrap:wrap;">
+            <div>
+              <div style="display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;">
+                <strong style="font-size:1rem;">{{ u.full_name }}</strong>
+                <code style="font-size:.82rem;">{{ u.username }}</code>
+                <span style="font-size:.75rem; font-weight:600; padding:.15rem .5rem; border-radius:999px; background:#e2e8f0; color:#1e293b;">{{ row.role }}</span>
+                {% if row.state_label %}
+                  <span style="font-size:.75rem; font-weight:600; padding:.15rem .5rem; border-radius:999px; background:#dcfce7; color:#166534;">{{ row.state_label }}</span>
+                {% endif %}
+                {% if not u.is_active %}
+                  <span style="font-size:.75rem; font-weight:600; padding:.15rem .5rem; border-radius:999px; background:#fee2e2; color:#991b1b;">Inactive</span>
+                {% endif %}
+              </div>
+              <div style="margin-top:.35rem; font-size:.84rem; color:var(--muted,#64748b);">
+                {% if row.role == 'hq_admin' %}
+                  All organization sites
+                {% elif row.role == 'state_admin' %}
+                  All sites in {{ u.assigned_state }}
+                {% else %}
+                  Primary: <b>{{ u.site_id or 'None' }}</b>
+                  {% if row.extra_site_ids %}
+                    · Additional: <b>{{ row.extra_site_ids|join(', ') }}</b>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+
+            {% if can_manage_target_user(current_user, u) %}
+            <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
+              <form method="post" action="{{ url_for('hq_users_reset_password', user_id=u.id) }}" style="display:flex; gap:.35rem; align-items:center;">
+                <input name="password" type="password" minlength="6" placeholder="New password" required style="width:130px; padding:.38rem .55rem; border:1px solid var(--border,#cbd5e1); border-radius:6px; font-size:.82rem;">
+                <button class="btn btn-secondary" type="submit" style="font-size:.82rem; padding:.38rem .65rem;">Reset PW</button>
+              </form>
+              {% if u.id != current_user.id %}
+                <form method="post" action="{{ url_for('hq_users_toggle', user_id=u.id) }}">
+                  <button class="btn btn-secondary" type="submit" style="font-size:.82rem; padding:.38rem .65rem; color:{{ '#166534' if not u.is_active else '#b91c1c' }};">
+                    {{ 'Activate' if not u.is_active else 'Deactivate' }}
+                  </button>
+                </form>
+                <form method="post" action="{{ url_for('hq_users_delete', user_id=u.id) }}" onsubmit="return confirm('Delete user {{ u.username }}?');">
+                  <button class="btn btn-secondary" type="submit" style="font-size:.82rem; padding:.38rem .65rem; color:#b91c1c;">Delete</button>
+                </form>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+
+          {% if can_manage_target_user(current_user, u) and row.role != 'hq_admin' %}
+            <details style="margin-top:.75rem;">
+              <summary style="cursor:pointer; font-size:.84rem; font-weight:600; color:#1d4ed8;">Edit role &amp; site access</summary>
+              <form method="post" action="{{ url_for('hq_users_update', user_id=u.id) }}" style="margin-top:.65rem; padding-top:.65rem; border-top:1px solid var(--border,#e2e8f0);">
+                <div style="display:flex; gap:.75rem; flex-wrap:wrap; margin-bottom:.6rem;">
+                  <label style="font-size:.82rem;">Role
+                    <select name="role" style="padding:.4rem .55rem; border:1px solid var(--border,#cbd5e1); border-radius:6px;">
+                      {% if not is_state_user %}
+                        <option value="state_admin" {% if row.role == 'state_admin' %}selected{% endif %}>state_admin</option>
+                      {% endif %}
+                      <option value="site_admin" {% if row.role == 'site_admin' %}selected{% endif %}>site_admin</option>
+                      <option value="engineer" {% if row.role == 'engineer' %}selected{% endif %}>engineer</option>
+                      <option value="user" {% if row.role == 'user' %}selected{% endif %}>user</option>
+                    </select>
+                  </label>
+                  {% if not is_state_user %}
+                    <label style="font-size:.82rem;">Assigned State (for state_admin)
+                      <select name="assigned_state" style="padding:.4rem .55rem; border:1px solid var(--border,#cbd5e1); border-radius:6px;">
+                        <option value="">--</option>
+                        {% for st in states %}
+                          <option value="{{ st }}" {% if u.assigned_state == st %}selected{% endif %}>{{ st }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                  {% endif %}
+                  <label style="font-size:.82rem;">Primary Site
+                    <select name="site_id" style="padding:.4rem .55rem; border:1px solid var(--border,#cbd5e1); border-radius:6px;">
+                      <option value="">--</option>
+                      {% for s in sites %}
+                        <option value="{{ s.site_id }}" {% if u.site_id == s.site_id %}selected{% endif %}>{{ s.site_name }} ({{ s.site_id }})</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:.45rem .85rem; margin-bottom:.65rem;">
+                  <span style="font-size:.82rem; font-weight:600;">Additional Sites:</span>
+                  {% for s in sites %}
+                    <label style="display:inline-flex; align-items:center; gap:.3rem; font-size:.82rem;">
+                      <input type="checkbox" name="extra_site_ids" value="{{ s.site_id }}" {% if s.site_id in row.extra_site_ids %}checked{% endif %}>
+                      <span>{{ s.site_name }} ({{ s.site_id }})</span>
+                    </label>
+                  {% endfor %}
+                </div>
+                <button class="btn btn-primary" type="submit" style="font-size:.82rem; padding:.4rem .75rem;">Save changes</button>
+              </form>
+            </details>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <p id="hq_user_no_matches" style="display:none; margin:1rem 0 0; color:var(--muted,#64748b);">No users match your filters.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var roleSelect = document.getElementById('cu_role');
+  var stateWrap = document.getElementById('cu_state_wrap');
+  var siteWrap = document.getElementById('cu_site_wrap');
+  var extraWrap = document.getElementById('cu_extra_sites_wrap');
+  function syncCreateForm() {
+    if (!roleSelect) return;
+    var isHqAdmin = roleSelect.value === 'hq_admin';
+    var isStateAdmin = roleSelect.value === 'state_admin';
+    if (stateWrap) stateWrap.style.display = isStateAdmin ? '' : 'none';
+    if (siteWrap) siteWrap.style.display = (isStateAdmin || isHqAdmin) ? 'none' : '';
+    if (extraWrap) extraWrap.style.display = (isStateAdmin || isHqAdmin) ? 'none' : '';
+  }
+  if (roleSelect) {
+    roleSelect.addEventListener('change', syncCreateForm);
+    syncCreateForm();
+  }
+
+  var searchEl = document.getElementById('hq_user_search');
+  var roleFilter = document.getElementById('hq_user_role_filter');
+  var stateFilter = document.getElementById('hq_user_state_filter');
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.hq-user-card'));
+  var countEl = document.getElementById('hq_user_visible_count');
+  var emptyEl = document.getElementById('hq_user_no_matches');
+
+  function filterUsers() {
+    var q = (searchEl && searchEl.value || '').trim().toLowerCase();
+    var r = (roleFilter && roleFilter.value || '').trim().toLowerCase();
+    var st = (stateFilter && stateFilter.value || '').trim().toLowerCase();
+    var vis = 0;
+    cards.forEach(function (card) {
+      var mQ = !q || (card.getAttribute('data-search') || '').indexOf(q) !== -1;
+      var mR = !r || (card.getAttribute('data-role') || '') === r;
+      var mS = !st || (card.getAttribute('data-state') || '') === st;
+      var show = mQ && mR && mS;
+      card.style.display = show ? '' : 'none';
+      if (show) vis += 1;
+    });
+    if (countEl) countEl.textContent = String(vis);
+    if (emptyEl) emptyEl.style.display = vis === 0 ? 'block' : 'none';
+  }
+  if (searchEl) searchEl.addEventListener('input', filterUsers);
+  if (roleFilter) roleFilter.addEventListener('change', filterUsers);
+  if (stateFilter) stateFilter.addEventListener('change', filterUsers);
+})();
+</script>
+{% endblock %}
